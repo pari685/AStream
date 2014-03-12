@@ -81,7 +81,6 @@ def get_url_list(bandwidth, media, playback_duration):
         media.url_list.append(base_url % (segment_count))
         segment_count += 1
         total_playback += segment_playback
-        print media.url_list[-1]
     return media
 
 def read_mpd(mpd_file, dashplayback):
