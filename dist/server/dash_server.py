@@ -64,7 +64,7 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             print "Received Request for MPD File %s" % (request)
         elif request.split('.')[-1] in ['m4f', 'mp4']:
             write_method = normal_write
-            kwargs = { 'rate' : RATE }
+            kwargs = {}
             print "Received Reuest for DASH Media File %s" % (request)
         else:
             self.send_error(404)
