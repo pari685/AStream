@@ -1,4 +1,4 @@
-adaptive_stream
-===============
+Adaptive Streaming
+==================
 
-AdaptiveStreaming
+Adaptive Streaming
