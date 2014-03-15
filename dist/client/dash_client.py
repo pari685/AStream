@@ -44,31 +44,6 @@ def id_generator(size=6):
     chars = string.ascii_uppercase + string.digits
     return ''.join(random.choice(chars) for _ in range(size))
 
-def get_media(domain, media, file_identifier, done_queue):
-    """ Download the media from the list of URL's in media
-    http://toastdriven.com/blog/2008/nov/11/brief-introduction-multiprocessing/
-    """
-    print "GET MEDIA", file_identifier
-    for segment in [media.initialization] + media.url_list:
-        segment_url = urlparse.urljoin(domain, segment)
-        segment_file = download_segment(segment_url,
-                                        file_identifier)
-        if segment_file:
-            done_queue.put(segment_url)
-        break
-    done_queue.put('STOP')
-    return None
-
-def make_sure_path_exists(path):
-    """ Module to make sure the path exists if not create it
-    """
-    print "Trying to create the path", path
-    try:
-        os.makedirs(path)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise
-
 def download_segment(segment_url, file_identifier):
     """ Module to download the segement"""
     try:
@@ -91,8 +66,36 @@ def download_segment(segment_url, file_identifier):
     segment_file_handle.close()
     return segment_filename
 
+def get_media(domain, media_info, file_identifier, done_queue):
+    """ Download the media from the list of URL's in media
+    http://toastdriven.com/blog/2008/nov/11/brief-introduction-multiprocessing/
+    """
+    bandwidth, media_dict = media_info
+    media = media_dict[bandwidth]
+    print "GET MEDIA", file_identifier
+    for segment in [media.initialization] + media.url_list:
+        segment_url = urlparse.urljoin(domain, segment)
+        segment_file = download_segment(segment_url,
+                                        file_identifier)
+        if segment_file:
+            done_queue.put((bandwidth, segment_url ))
+    done_queue.put((bandwidth, 'STOP'))
+    return None
+
+def make_sure_path_exists(path):
+    """ Module to make sure the path exists if not create it
+    """
+    print "Trying to create the path", path
+    try:
+        os.makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
 def start_playback(mpd_file, domain):
-    """ Module to download the MPEG-DASH media"""
+    """ Module that downloads the MPD-FIle and download all the representations of the 
+    Module to download the MPEG-DASH media.
+    """
     dash_playback_object = read_mpd.DashPlayback()
     dash_playback_object = read_mpd.read_mpd(mpd_file, dash_playback_object)
     playback_duration = dash_playback_object.playback_duration
@@ -100,9 +103,7 @@ def start_playback(mpd_file, domain):
     print "The DASH media has %d audio representations" % (len(dash_audio))
     dash_video = dash_playback_object.video
     print "The DASH media has %d video representations" % (len(dash_video))
-    # Download audio and video (All representations)
-    #audio_done_queues = defaultdict(Queue)
-    #video_done_queues = defaultdict(Queue)
+    
     audio_done_queue = Queue()
     video_done_queue = Queue()
 
@@ -111,11 +112,17 @@ def start_playback(mpd_file, domain):
     print "FILE IDENT", file_identifier
 
     for bandwidth in dash_audio:
+        # Get the list of URL's (relative location) for the audio 
         dash_audio[bandwidth] = read_mpd.get_url_list(
                 bandwidth, dash_audio[bandwidth],
                 playback_duration)
+        # Create a new process to download the audio stream.
+        # The domain + URL from the above list gives the complete path
+        # The fil-identifier is a random string used to create  a temporary folder for the current session
+        # Audio-done queue is used to excahnge information between the process and the calling function.
+        #'STOP' is added to the queue to indicate the end of the download of the sesson
         process = Process(target=get_media, args=(domain,
-                dash_audio[bandwidth], file_identifier,
+                (bandwidth, dash_audio), file_identifier,
                 audio_done_queue))
         process.start()
         processes.append(process)
@@ -124,8 +131,17 @@ def start_playback(mpd_file, domain):
         dash_video[bandwidth] = read_mpd.get_url_list(
                 bandwidth, dash_video[bandwidth],
                 playback_duration)
+        #Create a new process to download the audio stream.
+        #The domain + URL from the above list gives the
+        # complete path
+        #The fil-identifier is a random string used to
+        # create a temporary folder for the current session
+        #Video-done queue is used to excahnge information
+        # between the process and the calling function.
+        #'STOP' is added to the queue to indicate the end of the download of the sesson
+
         process = Process(target=get_media, args=(domain,
-                dash_video[bandwidth],file_identifier,
+                (bandwidth, dash_video),file_identifier,
                 video_done_queue))
         process.start()
         processes.append(process)
@@ -133,8 +149,17 @@ def start_playback(mpd_file, domain):
     for process in processes:
         process.join()
 
-    for status in iter(video_done_queue.get, 'STOP'):
-        print "Completed download of %s" %(status)
+    count = 0
+    for queue_values in iter(video_done_queue.get, None):
+        bandwidth, status = queue_values
+        if status == 'STOP':
+            print "Completed download of %s" %(bandwidth)
+            count += 1
+            if count == len(dash_video):
+                # If the download of all the videos is done
+                # the stop the
+                print "Finished d/w of  all video segments"
+                break
 
 def main():
     """ Main Program wrapper"""
@@ -144,5 +169,3 @@ def main():
     domian = get_domain_name(url)
     print 'Starting the streaming of the mpd_file'
     start_playback(mpd_file, domian)
-
-
