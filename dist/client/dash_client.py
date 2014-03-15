@@ -59,7 +59,6 @@ def get_media(domain, media, file_identifier, done_queue):
     done_queue.put('STOP')
     return None
 
-
 def make_sure_path_exists(path):
     """ Module to make sure the path exists if not create it
     """
