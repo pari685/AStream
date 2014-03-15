@@ -1,3 +1,5 @@
+Ideas:
+
 Server:
 1. Modify code to create segements of variable size (1 sec, 2 sec)
 2. Check for HTTP 1.1 persistent connections for different segments being transmitted over the same TCP connection
@@ -7,3 +9,10 @@ Client:
 
 1. Can we use the beforehand knowledge of the segment sizes in our decision to pick the next representation?
 
+
+
+
+Code:
+
+
+1. Chnage the Class object for media in the read_mpd file to dictionaries
