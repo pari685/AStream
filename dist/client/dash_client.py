@@ -77,6 +77,7 @@ def get_media(domain, media_info, file_identifier, done_queue):
     bandwidth, media_dict = media_info
     media = media_dict[bandwidth]
     print "GET MEDIA", file_identifier
+    media_start_time = timeit.default_timer()
     for segment in [media.initialization] + media.url_list:
         start_time = timeit.default_timer()
         segment_url = urlparse.urljoin(domain, segment)
@@ -86,7 +87,8 @@ def get_media(domain, media_info, file_identifier, done_queue):
         if segment_file:
             done_queue.put((bandwidth, segment_url, elapsed))
         print "Downloaded Segememt: bandwidth: %d URL  %s" %(bandwidth, segment)
-    done_queue.put((bandwidth, 'STOP'))
+    media_download_time = timeit.default_timer() - media_start_time
+    done_queue.put((bandwidth, 'STOP', media_download_time))
     return None
 
 def make_sure_path_exists(path):
@@ -107,10 +109,11 @@ def start_playback(mpd_file, domain):
     dash_playback_object = read_mpd.read_mpd(mpd_file, dash_playback_object)
     playback_duration = dash_playback_object.playback_duration
     dash_audio = dash_playback_object.audio
-    print "The DASH media has %d audio representations" % (len(dash_audio))
+    print "The DASH media has %d audio representations" % (
+            len(dash_audio))
     dash_video = dash_playback_object.video
-    print "The DASH media has %d video representations" % (len(dash_video))
-    
+    print "The DASH media has %d video representations" % (
+                                len(dash_video))
     audio_done_queue = Queue()
     video_done_queue = Queue()
 
@@ -160,7 +163,7 @@ def start_playback(mpd_file, domain):
     for queue_values in iter(video_done_queue.get, None):
         bandwidth, status, elapsed = queue_values
         if status == 'STOP':
-            print "Completed download of %s in %f%" %(bandwidth, elapsed)
+            print "Completed download of %s in %f " %(bandwidth, elapsed)
             count += 1
             if count == len(dash_video):
                 # If the download of all the videos is done
@@ -177,6 +180,4 @@ def main():
     print 'Starting the streaming of the mpd_file'
     if mpd_file:
         start_playback(mpd_file, domian)
-    
-    
 main()
