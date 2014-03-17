@@ -15,6 +15,7 @@ import string
 import random
 import os
 import errno
+import timeit
 from multiprocessing import Process, Queue
 
 def get_mpd(url):
@@ -23,6 +24,11 @@ def get_mpd(url):
         mpd_data = urllib2.urlopen(url).read()
     except urllib2.HTTPError, e:
         print "Unable to download MPD file HTTP Error. Code", e.code
+        return None
+    except urllib2.URLError:
+        print '''URLError. Unable to reach Server.  
+        Check if Server active and if you are connected to the network'''
+        return None
     mpd_file = url.split('/')[-1]
     mpd_file_handle = open(mpd_file, 'w')
     mpd_file_handle.write(mpd_data)
@@ -59,8 +65,6 @@ def download_segment(segment_url, file_identifier):
     segment_filename = os.path.join(file_identifier,
             segment_path)
     make_sure_path_exists(os.path.dirname(segment_filename))
-    print "Downloading segment %s to %s " % (segment_url,
-                                            segment_filename)
     segment_file_handle = open(segment_filename, 'wb')
     segment_file_handle.write(segment_data)
     segment_file_handle.close()
@@ -74,11 +78,14 @@ def get_media(domain, media_info, file_identifier, done_queue):
     media = media_dict[bandwidth]
     print "GET MEDIA", file_identifier
     for segment in [media.initialization] + media.url_list:
+        start_time = timeit.default_timer()
         segment_url = urlparse.urljoin(domain, segment)
         segment_file = download_segment(segment_url,
                                         file_identifier)
+        elapsed = timeit.default_timer() - start_time
         if segment_file:
-            done_queue.put((bandwidth, segment_url ))
+            done_queue.put((bandwidth, segment_url, elapsed))
+        print "Downloaded Segememt: bandwidth: %d URL  %s" %(bandwidth, segment)
     done_queue.put((bandwidth, 'STOP'))
     return None
 
@@ -93,8 +100,8 @@ def make_sure_path_exists(path):
             raise
 
 def start_playback(mpd_file, domain):
-    """ Module that downloads the MPD-FIle and download all the representations of the 
-    Module to download the MPEG-DASH media.
+    """ Module that downloads the MPD-FIle and download all the
+        representations of the Module to download the MPEG-DASH media.
     """
     dash_playback_object = read_mpd.DashPlayback()
     dash_playback_object = read_mpd.read_mpd(mpd_file, dash_playback_object)
@@ -151,9 +158,9 @@ def start_playback(mpd_file, domain):
 
     count = 0
     for queue_values in iter(video_done_queue.get, None):
-        bandwidth, status = queue_values
+        bandwidth, status, elapsed = queue_values
         if status == 'STOP':
-            print "Completed download of %s" %(bandwidth)
+            print "Completed download of %s in %f%" %(bandwidth, elapsed)
             count += 1
             if count == len(dash_video):
                 # If the download of all the videos is done
@@ -168,4 +175,8 @@ def main():
     mpd_file = get_mpd(url)
     domian = get_domain_name(url)
     print 'Starting the streaming of the mpd_file'
-    start_playback(mpd_file, domian)
+    if mpd_file:
+        start_playback(mpd_file, domian)
+    
+    
+main()
