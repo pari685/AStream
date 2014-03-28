@@ -1,0 +1,33 @@
+gsearch.pl: A Google Crawler for finding large files in a server.
+author: Demetres Antoniades
+email: danton[at]ics.forth.gr
+
+gsearch is a crawler that searches for files larger than a given 
+size in a particular web site. gsearch uses GoogleAPI in order to 
+search the web for several types of files (pdf, ps, doc, etc) 
+and returns the url of the files that satisfy the given parameters.
+
+Usage:
+./gsearch.pl -v [-w writefile] [-r readfile] [-s size] [server]
+        -v: verbose
+        -w: write results to file <writefile>
+        -r: read server(s) from file <readfile>
+                 file format: <server>\n
+        if readfile is not provided then server name is needed
+
+        -s: limiting results to files greater than size bytes (default = 100KB)
+
+In order to use GoogleAPI anyone must give a license key provided by google.
+We provide a valid license key inside gsearch.
+If you want to create and use your own key, please visit: 
+http://code.google.com/apis/soapsearch/.
+
+DEPENDENCIES:
+gsearch needs SOAP-Lite. Run "./configure" to be sure that it exists in your system.
+If this package is not present, then you have to install it.
+If you use a linux distribution like debian, then you need to install the
+package "libsoap-lite-perl" (e.g. apt-get install libsoap-lite-perl).
+Else, you can install it using "perl -MCPAN -e 'install SOAP::Lite'" 
+(if you already have CPAN.pm installed). 
+Or you can download it from "http://search.cpan.org/".
+
