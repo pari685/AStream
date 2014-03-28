@@ -1,0 +1,296 @@
+         abget building and running instructions
+	-----------------------------------------
+
+		abget Version: 1.0 
+
+Contents
+---------
+Overview of abget
+Building abget
+Running abget
+Configuring abget parameters
+Finding suitable files in a server
+Contact and additional information
+
+
+Overview of abget
+------------------
+
+abget is a tool for estimating the available bandwidth of an 
+end-to-end path using only one of the end hosts.
+The second host can be any TCP based web server in the Internet, which 
+cooperates indirectly by sending (or receiving) a stream of TCP packets.
+
+The available bandwidth is the maximum IP-layer throughput that a 
+flow can get in the path without reducing the rate of the rest of 
+the traffic in that path. That is, the non-utilized part of the path's capacity. 
+
+abget estimates a variation range of the available bandwidth in the path over
+a time period that can be defined by the user through the tool's parameters. 
+
+abget can estimate the available bandwidth for both downstream (from server to 
+our client) and upstream (from our client to the server) paths.
+
+For the estimation process, the user should define the web server for the 
+measurement path. Only for the downstream path, it should also give a sufficiently 
+large file (few KB) located in this web server (we offer some scripts for finding 
+such files automatically).
+
+Then, if it probes on the downstream path, abget asks for that file and
+receives the corresponding data segments from the server.
+abget emulates the TCP protocol in order to control the rate that the server
+sends these data segments. This is achieved by limiting the TCP advertise window
+to one MSS, and generating fake ACKs with the desirable rate.
+This process is repeated many times at different rates in order to estimate 
+the available bandwidth in the path.
+
+Else, if it probes on the upstream path, abget sends an http request in many
+overlapping segments. It repeats for many iterations with different rates in order 
+to estimate a variation range for the available bandwidth in that path.
+
+abget implements these techniques by emulating the TCP protocol, using the raw 
+IP socket interface and libpcap for capturing the received packets.
+For that reason, abget requires root privileges to run.
+
+
+Building abget
+---------------
+
+After downloading the source code, unpack the tar ball and change to directory
+abget_1.0 . Then, run "./configure", "make" and "make install".
+
+	# ./configue
+	# make
+	# make install
+
+In more systems, abget needs to use a firewall in order to bypass the normal
+TCP stack in kernel (except the Planetlab's raw socket interface). 
+That's because abget uses raw IP sockets and we want to prevent the normal TCP 
+stack to respond with an RST packet when it receives a packet that doesn't 
+belong to any established connection.
+So, in Linux the iptables command must exist, else abget will not work.
+
+If you want to run abget in Planetlab, you must configure abget with the 
+--enable-planetlab flag.
+
+
+Running abget
+--------------
+
+For available bandwidth estimation in the downstream path run
+
+	# abget -d -f filename hostname
+
+where hostname is the name (or the IP address) of a web server and filename 
+a sufficiently large file in that web server.
+
+For estimation of the available bandwidth in the upstream path just run
+
+	# abget -u hostname
+
+where hostname is the name (or the IP address) of the web server that you want.
+
+For instance, if we know that the file http://www.ics.forth.gr/~papadog/abget/abget-1.0.tar.gz
+is large enough for the stream length that we want, we would run abget for 
+the downstream as follows:
+	# abget -d -f /~papadog/abget/abget-1.0.tar.gz www.ics.forth.gr
+For the upstream path:
+	# abget -u www.ics.forth.gr
+
+Remember that you have to run abget as root.
+
+This is the simplest way to run abget. However, the are some important 
+properties that you are able to configure before running the tool.
+
+Usage:
+        abget   [-d | --downstream]
+                [-u | --upstream]
+                [-b | --binary]
+                [-l | --linear]
+                [-p <target-port>]
+                [-w <source-port>]
+                [-s <source-ip>]
+                [-i <network-interface>]
+                [-r <estimation-range>] (Mbps)
+                [-x <variation-range>] (Mbps)
+                [-t <max-time>] (seconds)
+                [-L <Rmin>] (Mbps)
+                [-H <Rmax>] (Mbps)
+                [-P <stream-length>] (packets)
+                [-N <number-of-streams>]
+                [-I <idle time>] (microseconds)
+                [-D <writefile>]
+                [-c <configuration file>]
+                [-v | --verbose]
+                [-h | --help]
+                [-f <filepath>]
+                <host>
+
+You can determine if you want to measure the available bandwidth in the 
+downstream path (default) or in the upstream path (-d or --downstream and 
+-u or --upstream respectively).
+
+Also, you may want to define if you prefer a linear probing algorithm (default) or
+a binary search probing algorithm (-l or --linear and -b or --binary respectively).
+In the linear probling algorithm we start probing at the rate Rmin and we increase it
+using as step the estimation resolution, till the rate Rmax is reached.
+In the binary search probing algorithm we always probe at the rate (Rmin+Rmax)/2, and
+if the rate is found higher that the actual available bandwidth we continue in the
+first half of that range, else we do the same process in the second half.
+We stop when we have reached the given estimation resolution or when the variation
+range of the available bandwidth is found larger than the given estimation resolution.
+
+You can also set properly some important tool's parameters for the estimation process:
+
+-Rmin and Rmax (-L and -H), which define the probing range in Mbits/sec.
+-The estimation resolution (-r), which is the minimum variation range that we
+are interested for the available bandwidth estimation. 
+In the linear probing algorithm, the estimation resolution defines the step for
+increasing the probing rates. For the binary search probing, it specifies one of 
+the termination conditions of the algorithm, when the current estimation range becomes 
+equal or lower than this resolution (higher rate - lower rate <= estimation resolution).
+-The variation resolution, that is used only in binary search probing algorithm,
+and defines how much we should approximate the "grey" region, when this "grey" region of 
+the available bandwidth is larger than the estimation resolution specified.
+-The stream length (-P), that is the number of packets per stream.
+-The number of streams per every probing rate (-N).
+-The idle time between successive iterations (-I) in microseconds.
+
+If you need so, you can define the source port (by default a random one free port
+is chosen) and the target port (port 80 by default).
+
+While running abget, you can see the probing rates and whether each iteration is
+characterized as Increasing (probing rate higher than the available bandwidth),
+Non-increasing (less than the available bandwidth) or Grey.
+The trend of every stream is decided from the majority of these iterations.
+Finally, the tool reports the variation range of the available bandwidth in that time period.
+In case that the available bandwidth follows a non-stationary process, which happens if 
+the path's utilization varies significantly in very small timescales, the abget will report 
+this state.
+
+A typical output of abget is shown below (while running the linear probing algorithm
+for a downstream path with probing range 0 to 100 Mbps, estimation resolution 10 Mbps
+and 5 streams per every probing rate):
+
+:/home/papadog/abget# ./abget -f /packages/pdf/business/26walmart.pdf www.nytimes.com
+Configuration file /usr/local/etc/abget/abget.conf loaded
+
+=============== a b g e t ===============
+  source = 139.91.70.47 [139.91.70.47]
+  target = www.nytimes.com [199.239.137.200]
+  target port = 80
+  source port = 11070
+
+--- Downstream path ---
+--- Linear probing ---
+
+Probing from 0.000000 to 100.000000 Mbps with resolution of 10.000000 Mbps
+
+Rate=10.000000 Mbps: NNNNN
+Rate=20.000000 Mbps: NNNNN
+Rate=30.000000 Mbps: NGNNN
+Rate=40.000000 Mbps: NNGNG
+Rate=50.000000 Mbps: GGING
+Rate=60.000000 Mbps: IGIII
+Rate=70.000000 Mbps: IIIII
+Rate=80.000000 Mbps: IIIII
+
+Available bandwidth estimated: 40.000000 - 60.000000 Mbps
+Execution Time 124.956318 seconds
+=========================================
+
+A more detailed output can be choosen using the verbose output (-v or --verbose).
+Also, the output can be written to a file (-D filename).
+
+
+Configuring abget parameters
+---------------------------
+
+Except from the command line parameters, it is easier to use the abget configuration 
+file (abget.conf).
+After installing abget, the configuration file is located in the installation 
+directory (e.g. /usr/local/etc/abget/abget.conf).
+It also exists locally in the abget folder.
+At last, you can load your own configuration file using the -c <con filename> option.
+
+You can easily edit all the parameters of the tool to the values you want in the 
+abget configuration file.
+These will be the default values, you may also want to change them from the command 
+line parameters.
+
+
+Finding suitable files in a server
+-----------------------------------
+
+We offer three scripts in order to locate proper files into a given web server.
+
+1) The first one (gsearch) is a perl script based on google API.
+It is located inside the gsearch directory.
+
+gsearch is a crawler that searches for files larger than a given
+size in a particular web site. gsearch uses GoogleAPI in order to
+search the web for several types of files (pdf, ps, doc, etc)
+and returns the url of the files that satisfy the given parameters.
+
+Usage:
+./gsearch.pl -v [-w writefile] [-r readfile] [-s size] [server]
+        -v: verbose
+        -w: write results to file <writefile>
+        -r: read server(s) from file <readfile>
+                 file format: <server>\n
+        if readfile is not provided then server name is needed
+
+        -s: limiting results to files greater than size bytes (default = 100KB)
+
+In order to use GoogleAPI someone must give a license key provided by google.
+We provide a valid license key inside gsearch.
+If you want to create and use your own key, please visit:
+http://code.google.com/apis/soapsearch/.
+
+DEPENDENCIES:
+gsearch needs SOAP-Lite. Run "./configure" to be sure that it exists in your system.
+If this package is not present, then you have to install it.
+If you use a linux distribution like debian, then you need to install the
+package "libsoap-lite-perl" (e.g. apt-get install libsoap-lite-perl).
+Else, you can install it using "perl -MCPAN -e 'install SOAP::Lite'"
+(if you already have CPAN.pm installed).
+Or you can download it from "http://search.cpan.org/".
+
+2) The second one (findfiles.pl) is a perl script that performs HEAD requests
+for common filetypes (like doc, pdf, jpg, png, etc) and crawls recursively a web
+site in order to find such files that exceeds the specified size.
+
+Usage: 
+         ./findfiles.pl [-v] [-s size] [-m number_of_files] [server]
+                -v: verbose
+                -s: limiting results to files greater than size bytes (default = 100000)
+                -m: maximum number of files to return results (default = 3)
+
+3) The third script (crawler.py) is a python script that uses wget for a 
+recursive crawling in order to locate files in a given web server (host)
+that are larger than a given size for a given depth and limit.
+
+Usage: python crawler.py host [depth] [size] [limit]
+
+The default depth (for wget recursive crawling) is 2. 
+The default size for the suitable files is 20 KB.
+The default value for limit (amount of data that wget will download from the web server
+before stop) is 1 MB.
+
+The results are printed and also saved to the Crawl_Results file.
+
+
+Contact and additional information
+-----------------------------------
+
+Additional information can be found at http://www.ics.forth.gr/~papadog/abget .
+A more detailed description of the tool is given in the paper
+"Available bandwidth measurements as simple as running wget", presented in PAM2006
+(http://www.ics.forth.gr/~papadog/abget/abget.pdf).
+You can also contact the authors by sending them an email:
+	papadog@ics.forth.gr
+	danton@ics.forth.gr
+	athanat@ics.forth.gr
+	dovrolis@cc.gatech.edu
+	markatos@ics.forth.gr
+
