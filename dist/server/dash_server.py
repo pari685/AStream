@@ -14,42 +14,30 @@ Ipython Run:
 
 To test with browser : 'http://198.248.242.16:8005/mpd/index.html')
 
-
 To retriev from Python2.7 Shell:
-
     import urllib2
      urllib2.urlopen(
             "http://198.248.242.16:8006/mpd/x4ukwHdACDw.mpd").read()
-
-
 """
-
 import time
 import BaseHTTPServer
 import sys
 import os
 
 sys.path.append('..')
-
 #HOSTNAME = 'localhost'
 HOSTNAME = '198.248.242.16'
-
 PORT_NUMBER = 8006
-
 BLOCK_SIZE = 1024
 
 # 10 kbps when size is in bytes
 RATE = None
 
-
 HTML_PAGES = ['index.html']
-
 MPD_FILES = ['mpd/index.html', 'mpd/x4ukwHdACDw.mpd']
-
 
 class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     "HTTPHandler to serve the DASH video"
-
     def do_GET(self):
         "Function to handle the get message"
         request = self.path.strip("/").split('?')[0]
@@ -87,7 +75,6 @@ def normal_write(output, request):
         now = time.time()
         output.flush()
     return now - start_time
-
 
 def slow_write(output, request, rate=None):
     """Function to write the video onto output stream with interruptions in
