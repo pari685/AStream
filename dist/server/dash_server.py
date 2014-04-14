@@ -2,7 +2,6 @@
 """A simple HTTP server
 
 To start the server:
-
     python delayserver.py
 
 Ipython Run:
@@ -23,13 +22,20 @@ import time
 import BaseHTTPServer
 import sys
 import os
+from argparse import ArgumentParser
+#sys.path.append('..')
 
-sys.path.append('..')
-#HOSTNAME = 'localhost'
-HOSTNAME = '198.248.242.16'
-PORT_NUMBER = 8006
+# Default values
+DEFAULT_HOSTNAME = '198.248.242.16'
+DEFAULT_PORT = 8006
+DEFAULT_DELAY = 0.0
+
 BLOCK_SIZE = 1024
 
+# Values set by the option parser
+PORT = DEFAULT_PORT
+HOSTNAME = DEFAULT_HOSTNAME
+DELAY = DEFAULT_DELAY
 # 10 kbps when size is in bytes
 RATE = None
 
@@ -46,12 +52,12 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             write_method = normal_write
             kwargs = {}
             print "Received Request for HTML File %s" % (request)
-        elif request in HTML_PAGES + MPD_FILES:
+        elif request in MPD_FILES:
             write_method = normal_write
             kwargs = {}
             print "Received Request for MPD File %s" % (request)
         elif request.split('.')[-1] in ['m4f', 'mp4']:
-            write_method = normal_write
+            write_method = slow_write
             kwargs = {}
             print "Received Reuest for DASH Media File %s" % (request)
         else:
@@ -88,7 +94,7 @@ def slow_write(output, request, rate=None):
         current_stream = len(data)
         while (data != ''):
             if rate:
-                if send_rate(BLOCK_SIZE, last_send - time.time()) >  rate:
+                if curr_send_rate(BLOCK_SIZE, last_send - time.time()) >  rate:
                     continue
             output.write(data)
             last_send = time.time()
@@ -100,9 +106,9 @@ def slow_write(output, request, rate=None):
                     current_stream, request, now - start_time)
     return now - start_time
 
-def send_rate(data_size, time_to_send_data):
-    """ Method to calculate the rate at which the data is sent
-        Data_size in byes
+def curr_send_rate(data_size, time_to_send_data):
+    """ Method to calculate the current rate at which the data 
+        is being sent. Data_size in byes
         The return value is in kbps
     """
     while True:
@@ -113,14 +119,46 @@ def send_rate(data_size, time_to_send_data):
             continue
     return rate
 
-def main(stop_after_flv=False):
-    "Function to start server"
-    http_server = BaseHTTPServer.HTTPServer((HOSTNAME, PORT_NUMBER),
+def start_server():
+    """ Module to start the server"""
+    http_server = BaseHTTPServer.HTTPServer((HOSTNAME, PORT),
                                             MyHTTPRequestHandler)
-    http_server.stop_after_flv = stop_after_flv
     print " ".join(("Listening on ", HOSTNAME, " at Port ",
-        str(PORT_NUMBER), " - press ctrl-c to stop"))
+        str(PORT), " - press ctrl-c to stop"))
     http_server.serve_forever()
+
+def create_arguments(parser):
+    """ Adding arguments to the parser
+        
+    
+    """
+    parser.add_argument('-p', '--PORT', type=int,
+            help=("Port Number to run the server. Default = %d" % DEFAULT_PORT),
+            default=DEFAULT_PORT)
+    parser.add_argument('-s', '--HOSTNAME',
+            help=("Hostname of the server. Default = %s" % DEFAULT_HOSTNAME),
+            default=DEFAULT_HOSTNAME)
+    parser.add_argument('-d', '--DELAY', type=float,
+            help=("Delay value for the server in msec. Default = %f"
+                % DEFAULT_DELAY), default=DEFAULT_DELAY)
+
+def update_config(args):
+    """ Module to update the config values with the a
+    arguments """
+    globals().update(vars(args))
+    return
+
+def main(argv=None):
+    "Program wrapper"
+    if not argv:
+        argv = sys.argv[:1]
+    usage = ('%prog [-s hostname] [-p port] [-d delay]')
+    parser = ArgumentParser(description='Process server parameters')
+    create_arguments(parser)
+    args = parser.parse_args()
+    update_config(args)
+    print HOSTNAME, PORT, DELAY
+    start_server()
 
 if __name__ == "__main__":
     sys.exit(main())
