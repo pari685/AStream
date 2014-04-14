@@ -22,12 +22,13 @@ def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     try:
         mpd_data = urllib2.urlopen(url).read()
-    except urllib2.HTTPError, e:
-        print "Unable to download MPD file HTTP Error. Code", e.code
+    except urllib2.HTTPError, error:
+        print error.code
+        print "Unable to download MPD file HTTP Error.",
         return None
     except urllib2.URLError:
         print '''URLError. Unable to reach Server.  
-        Check if Server active and if you are connected to the network'''
+        Check if Server active '''
         return None
     mpd_file = url.split('/')[-1]
     mpd_file_handle = open(mpd_file, 'w')
@@ -54,8 +55,9 @@ def download_segment(segment_url, file_identifier):
     """ Module to download the segement"""
     try:
         segment_data = urllib2.urlopen(segment_url).read()
-    except urllib2.HTTPError, e:
-        print "Unable to download DASH Segment file HTTP Error. Code", e.code
+    except urllib2.HTTPError, error:
+        print error.code
+        print "Unable to download DASH Segment file HTTP Error"
         return None
     parsed_uri = urlparse.urlparse(segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
@@ -86,7 +88,8 @@ def get_media(domain, media_info, file_identifier, done_queue):
         elapsed = timeit.default_timer() - start_time
         if segment_file:
             done_queue.put((bandwidth, segment_url, elapsed))
-        print "Downloaded Segememt: bandwidth: %d URL  %s" %(bandwidth, segment)
+        print "Downloaded Segment bandwidth %d URL %s" % (
+                bandwidth, segment)
     media_download_time = timeit.default_timer() - media_start_time
     done_queue.put((bandwidth, 'STOP', media_download_time))
     return None
@@ -102,18 +105,19 @@ def make_sure_path_exists(path):
             raise
 
 def start_playback(mpd_file, domain):
-    """ Module that downloads the MPD-FIle and download all the
-        representations of the Module to download the MPEG-DASH media.
+    """ Module that downloads the MPD-FIle and download
+        all the representations of the Module to download
+        the MPEG-DASH media.
     """
-    dash_playback_object = read_mpd.DashPlayback()
-    dash_playback_object = read_mpd.read_mpd(mpd_file, dash_playback_object)
-    playback_duration = dash_playback_object.playback_duration
-    dash_audio = dash_playback_object.audio
+    dp_object = read_mpd.DashPlayback()
+    dp_object = read_mpd.read_mpd(mpd_file, dp_object)
+    #playback_duration = dp_object.playback_duration
+    #dash_audio = dp_object.audio
     print "The DASH media has %d audio representations" % (
-            len(dash_audio))
-    dash_video = dash_playback_object.video
+            len(dp_object.audio))
+    #dash_video = dash_playback_object.video
     print "The DASH media has %d video representations" % (
-                                len(dash_video))
+                                len(dp_object.video))
     audio_done_queue = Queue()
     video_done_queue = Queue()
 
@@ -121,38 +125,45 @@ def start_playback(mpd_file, domain):
     file_identifier = id_generator(6)
     print "FILE IDENT", file_identifier
 
-    for bandwidth in dash_audio:
+    for bandwidth in dp_object.audio:
         # Get the list of URL's (relative location) for the audio 
-        dash_audio[bandwidth] = read_mpd.get_url_list(
-                bandwidth, dash_audio[bandwidth],
-                playback_duration)
+        dp_object.audio[bandwidth] = read_mpd.get_url_list(
+                bandwidth, dp_object.audio[bandwidth],
+                dp_object.playback_duration)
         # Create a new process to download the audio stream.
-        # The domain + URL from the above list gives the complete path
-        # The fil-identifier is a random string used to create  a temporary folder for the current session
-        # Audio-done queue is used to excahnge information between the process and the calling function.
-        #'STOP' is added to the queue to indicate the end of the download of the sesson
+        # The domain + URL from the above list gives the 
+        # complete path
+        # The fil-identifier is a random string used to 
+        # create  a temporary folder for current session
+        # Audio-done queue is used to excahnge information
+        # between the process and the calling function.
+        # 'STOP' is added to the queue to indicate the end 
+        # of the download of the sesson
         process = Process(target=get_media, args=(domain,
-                (bandwidth, dash_audio), file_identifier,
+                (bandwidth, dp_object.audio), 
+                file_identifier,
                 audio_done_queue))
         process.start()
         processes.append(process)
 
-    for bandwidth in dash_video:
-        dash_video[bandwidth] = read_mpd.get_url_list(
-                bandwidth, dash_video[bandwidth],
-                playback_duration)
-        #Create a new process to download the audio stream.
+    for bandwidth in dp_object.video:
+        dp_object.video[bandwidth] = read_mpd.get_url_list(
+                bandwidth, dp_object.video[bandwidth],
+                dp_object.playback_duration)
+        #Create a new process to download the audio 
+        #stream.
         #The domain + URL from the above list gives the
-        # complete path
+        #complete path
         #The fil-identifier is a random string used to
-        # create a temporary folder for the current session
+        #create a temporary folder for current session
         #Video-done queue is used to excahnge information
-        # between the process and the calling function.
-        #'STOP' is added to the queue to indicate the end of the download of the sesson
+        #between the process and the calling function.
+        #'STOP' is added to the queue to indicate the 
+        #end of the download of the sesson
 
         process = Process(target=get_media, args=(domain,
-                (bandwidth, dash_video),file_identifier,
-                video_done_queue))
+                (bandwidth, dp_object.video),
+                file_identifier, video_done_queue))
         process.start()
         processes.append(process)
 
@@ -163,9 +174,10 @@ def start_playback(mpd_file, domain):
     for queue_values in iter(video_done_queue.get, None):
         bandwidth, status, elapsed = queue_values
         if status == 'STOP':
-            print "Completed download of %s in %f " %(bandwidth, elapsed)
+            print "Completed download of %s in %f " % (
+                    bandwidth, elapsed)
             count += 1
-            if count == len(dash_video):
+            if count == len(dp_object.video):
                 # If the download of all the videos is done
                 # the stop the
                 print "Finished d/w of  all video segments"
