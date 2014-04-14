@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<MPD mediaPresentationDuration="PT2M17S" minBufferTime="PT5.01S" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <!-- Created with Bento4 mp4-dash.py, VERSION=1.4.0-541  -->
+  <Period>
+    <AdaptationSet mimeType="audio/mp4" segmentAlignment="true" startWithSAP="1">
+      <Representation bandwidth="127965" codecs="mp4a.40.02" id="audio.und">
+        <SegmentTemplate duration="10000" initialization="x4ukwHdACDw/audio/und/init.mp4" media="audio/und/seg-$Number%04d$.m4f" startNumber="0" timescale="1000"/>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet mimeType="video/mp4" segmentAlignment="true" startWithSAP="1">
+      <Representation bandwidth="226662" codecs="avc1.4d400d" height="182" id="video.1" width="426">
+        <SegmentTemplate duration="5005" initialization="x4ukwHdACDw/video/1/init.mp4" media="x4ukwHdACDw/video/1/seg-$Number%04d$.m4f" startNumber="0" timescale="1000"/>
+      </Representation>
+      <Representation bandwidth="349683" codecs="avc1.4d4015" height="272" id="video.2" width="640">
+        <SegmentTemplate duration="5005" initialization="x4ukwHdACDw/video/2/init.mp4" media="x4ukwHdACDw/video/2/seg-$Number%04d$.m4f" startNumber="0" timescale="1000"/>
+      </Representation>
+      <Representation bandwidth="682492" codecs="avc1.4d401e" height="362" id="video.3" width="854">
+        <SegmentTemplate duration="5005" initialization="x4ukwHdACDw/video/3/init.mp4" media="x4ukwHdACDw/video/3/seg-$Number%04d$.m4f" startNumber="0" timescale="1000"/>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
