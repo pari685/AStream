@@ -21,6 +21,12 @@ To Test from client:
   from urllib2 import urlopen
   data = urlopen("http://198.248.242.16:8006/x4ukwHdACDw/video/1/seg-0001.m4f"))
 
+
+To DO:
+    1. Directory Listing as in SimpleHTTPServer.py
+    2. Guess Type of File
+    3. Translate path from HTML to local path
+    4. Automate the MPD and DASH file LIST generation
 """
 import time
 import BaseHTTPServer
@@ -48,7 +54,11 @@ HTML_PAGES = ['index.html']
 MPD_FILES = ['mpd/index.html', 'mpd/x4ukwHdACDw.mpd']
 
 # dict that holds the current active sessions
-ACTIVE_DICT = defaultdict(list)
+# Has the Keys : 
+#       'session_list' = List of active session ID's = {connection_id, port}
+#       'delay' : iterator to check if we need to delay or not
+
+ACTIVE_DICT = defaultdict(dict)
 
 # DELAY Parameters
 # Number of the segement to insert delay
@@ -58,10 +68,17 @@ SLOW_COUNT = 3
 def get_count():
     """ Module that returns a random value """
     for i in range(1, 1000):
-        yield COUNT*i
+        yield SLOW_COUNT*i
 
 COUNT_ITER = get_count()
 DELAY_VALUES = dict()
+
+def delay_decision():
+    """ Module to decide if the segemnt is to be delayed or not"""
+    for i in range(30):
+        if i%3 == 0:
+            yield 0
+        yield 1
 
 class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     "HTTPHandler to serve the DASH video"
@@ -87,14 +104,15 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             # in the ACTIVE_DICT
             if connection_id in ACTIVE_DICT:
                 del(ACTIVE_DICT[connection_id])
-                del(DELAY_VALUES[connection_id])
-            else:
-                DELAY_VALUES[connection_id] = get_count()
         elif request.split('.')[-1] in ['m4f', 'mp4']:
             print "Request for DASH Media %s" % (request)
-            ACTIVE_DICT[connection_id].append(os.path.basename(request))
+            if not connection_id in ACTIVE_DICT:
+                ACTIVE_DICT[connection_id] = {'FILE_LIST' : [os.path.basename(request)],
+                                              'iter' : delay_decision()}
+            else:
+                ACTIVE_DICT[connection_id]['FILE_LIST'].append(os.path.basename(request))
 
-            if len(ACTIVE_DICT[connection_id])%SLOW_COUNT == 0:
+            if ACTIVE_DICT[connection_id]['iter'].next() == 0:
                 duration = slow_write(output=self.wfile,
                         request=request, rate=SLOW_RATE)
                 print 'Slow: Request took %f seconds' % (duration)
