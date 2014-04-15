@@ -17,48 +17,91 @@ To retriev from Python2.7 Shell:
     import urllib2
      urllib2.urlopen(
             "http://198.248.242.16:8006/mpd/x4ukwHdACDw.mpd").read()
+To Test from client:
+  from urllib2 import urlopen
+  data = urlopen("http://198.248.242.16:8006/x4ukwHdACDw/video/1/seg-0001.m4f"))
+
 """
 import time
 import BaseHTTPServer
 import sys
 import os
 from argparse import ArgumentParser
+from collections import defaultdict
 #sys.path.append('..')
 
 # Default values
 DEFAULT_HOSTNAME = '198.248.242.16'
 DEFAULT_PORT = 8006
-DEFAULT_DELAY = 0.0
+DEFAULT_SLOW_RATE = 0
 
 BLOCK_SIZE = 1024
 
 # Values set by the option parser
 PORT = DEFAULT_PORT
 HOSTNAME = DEFAULT_HOSTNAME
-DELAY = DEFAULT_DELAY
+HTTP_VERSION = "HTTP/1.1"
 # 10 kbps when size is in bytes
-RATE = None
+SLOW_RATE = DEFAULT_SLOW_RATE
 
 HTML_PAGES = ['index.html']
 MPD_FILES = ['mpd/index.html', 'mpd/x4ukwHdACDw.mpd']
+
+# dict that holds the current active sessions
+ACTIVE_DICT = defaultdict(list)
+
+# DELAY Parameters
+# Number of the segement to insert delay
+#COUNT = 3
+SLOW_RATE = 5
+COUNT = 3
+def get_count():
+    """ Module that returns a random value """
+    for i in range(1, 1000):
+        yield COUNT*i
+
+COUNT_ITER = get_count()
+DELAY_VALUES = dict()
 
 class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     "HTTPHandler to serve the DASH video"
     def do_GET(self):
         "Function to handle the get message"
         request = self.path.strip("/").split('?')[0]
-        print self.path
+        # connection_id = client IP, dirname of file
+        connection_id = (self.client_address[0],
+                            os.path.dirname(self.path))
         shutdown = False
         kwargs = {}
         if request in HTML_PAGES:
-            write_method = normal_write
-            print "Received Request for HTML File %s" % (request)
+            print "Request HTML %s" % (request)
+            duration = normal_write(self.wfile,
+                    request, **kwargs)
         elif request in MPD_FILES:
-            write_method = normal_write
-            print "Received Request for MPD File %s" % (request)
+            print "Request for MPD %s" % (request)
+            duration = normal_write(self.wfile,
+                    request, **kwargs)
+            # assuming that the new session always
+            # starts with the download of the MPD file
+            # Making sure that older sessions are not
+            # in the ACTIVE_DICT
+            if connection_id in ACTIVE_DICT:
+                del(ACTIVE_DICT[connection_id])
+                del(DELAY_VALUES[connection_id])
+            else:
+                DELAY_VALUES[connection_id] = get_count()
         elif request.split('.')[-1] in ['m4f', 'mp4']:
-            write_method = slow_write
-            print "Received Reuest for DASH Media File %s" % (request)
+            print "Request for DASH Media %s" % (request)
+            ACTIVE_DICT[connection_id].append(os.path.basename(request))
+
+            if len(ACTIVE_DICT[connection_id])%3 == 0:
+                duration = slow_write(output=self.wfile,
+                        request=request, rate=SLOW_RATE)
+                print 'Slow: Request took %f seconds' % (duration)
+            else:
+                duration = normal_write(self.wfile,
+                        request, **kwargs)
+                print 'Normal: Request took %f seconds' % (duration)
         else:
             self.send_error(404)
             return
@@ -67,8 +110,6 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(os.path.getsize(request)))
         self.send_header('Pragma', 'no-cache' )
         self.end_headers()
-        duration = write_method(self.wfile, request, **kwargs)
-        print 'Request took %f seconds' % (duration)
         if shutdown:
             self.server.shutdown()
 
@@ -85,6 +126,7 @@ def slow_write(output, request, rate=None):
     """Function to write the video onto output stream with interruptions in
     the stream
     """
+    print "Slow write of %s" % request
     with open(request, 'r') as request_file:
         start_time = time.time()
         data = request_file.read(BLOCK_SIZE)
@@ -93,6 +135,7 @@ def slow_write(output, request, rate=None):
         current_stream = len(data)
         while (data != ''):
             if rate:
+                print "Slow write of %s at rate %f" % (request, rate)
                 if curr_send_rate(BLOCK_SIZE, last_send - time.time()) >  rate:
                     continue
             output.write(data)
@@ -124,6 +167,8 @@ def start_server():
                                             MyHTTPRequestHandler)
     print " ".join(("Listening on ", HOSTNAME, " at Port ",
         str(PORT), " - press ctrl-c to stop"))
+    # Use this Version of HTTP Protocol
+    http_server.protocol_version = HTTP_VERSION
     http_server.serve_forever()
 
 def create_arguments(parser):
@@ -134,9 +179,9 @@ def create_arguments(parser):
     parser.add_argument('-s', '--HOSTNAME',
             help=("Hostname of the server. Default = %s" % DEFAULT_HOSTNAME),
             default=DEFAULT_HOSTNAME)
-    parser.add_argument('-d', '--DELAY', type=float,
+    parser.add_argument('-d', '--SLOW_RATE', type=float,
             help=("Delay value for the server in msec. Default = %f"
-                % DEFAULT_DELAY), default=DEFAULT_DELAY)
+                % DEFAULT_SLOW_RATE), default=DEFAULT_SLOW_RATE)
 
 def update_config(args):
     """ Module to update the config values with the a
@@ -148,12 +193,10 @@ def main(argv=None):
     "Program wrapper"
     if not argv:
         argv = sys.argv[:1]
-    usage = ('%prog [-s hostname] [-p port] [-d delay]')
     parser = ArgumentParser(description='Process server parameters')
     create_arguments(parser)
     args = parser.parse_args()
     update_config(args)
-    print HOSTNAME, PORT, DELAY
     start_server()
 
 if __name__ == "__main__":
