@@ -54,7 +54,7 @@ ACTIVE_DICT = defaultdict(list)
 # Number of the segement to insert delay
 #COUNT = 3
 SLOW_RATE = 5
-COUNT = 3
+SLOW_COUNT = 3
 def get_count():
     """ Module that returns a random value """
     for i in range(1, 1000):
@@ -94,7 +94,7 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             print "Request for DASH Media %s" % (request)
             ACTIVE_DICT[connection_id].append(os.path.basename(request))
 
-            if len(ACTIVE_DICT[connection_id])%3 == 0:
+            if len(ACTIVE_DICT[connection_id])%SLOW_COUNT == 0:
                 duration = slow_write(output=self.wfile,
                         request=request, rate=SLOW_RATE)
                 print 'Slow: Request took %f seconds' % (duration)
