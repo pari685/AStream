@@ -47,18 +47,17 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_GET(self):
         "Function to handle the get message"
         request = self.path.strip("/").split('?')[0]
+        print self.path
         shutdown = False
+        kwargs = {}
         if request in HTML_PAGES:
             write_method = normal_write
-            kwargs = {}
             print "Received Request for HTML File %s" % (request)
         elif request in MPD_FILES:
             write_method = normal_write
-            kwargs = {}
             print "Received Request for MPD File %s" % (request)
         elif request.split('.')[-1] in ['m4f', 'mp4']:
             write_method = slow_write
-            kwargs = {}
             print "Received Reuest for DASH Media File %s" % (request)
         else:
             self.send_error(404)
@@ -128,10 +127,7 @@ def start_server():
     http_server.serve_forever()
 
 def create_arguments(parser):
-    """ Adding arguments to the parser
-        
-    
-    """
+    """ Adding arguments to the parser"""
     parser.add_argument('-p', '--PORT', type=int,
             help=("Port Number to run the server. Default = %d" % DEFAULT_PORT),
             default=DEFAULT_PORT)
