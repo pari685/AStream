@@ -76,7 +76,7 @@ DELAY_VALUES = dict()
 def delay_decision():
     """ Module to decide if the segemnt is to be delayed or not"""
     for i in range(30):
-        if i%3 == 0:
+        if i % 3 == 0:
             yield 0
         yield 1
 
@@ -89,15 +89,15 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         connection_id = (self.client_address[0],
                             os.path.dirname(self.path))
         shutdown = False
-        kwargs = {}
+        #kwargs = {}
         if request in HTML_PAGES:
             print "Request HTML %s" % (request)
             duration = normal_write(self.wfile,
-                    request, **kwargs)
+                    request) #, **kwargs)
         elif request in MPD_FILES:
             print "Request for MPD %s" % (request)
             duration = normal_write(self.wfile,
-                    request, **kwargs)
+                    request) #, **kwargs)
             # assuming that the new session always
             # starts with the download of the MPD file
             # Making sure that older sessions are not
@@ -107,10 +107,12 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         elif request.split('.')[-1] in ['m4f', 'mp4']:
             print "Request for DASH Media %s" % (request)
             if not connection_id in ACTIVE_DICT:
-                ACTIVE_DICT[connection_id] = {'FILE_LIST' : [os.path.basename(request)],
-                                              'iter' : delay_decision()}
+                ACTIVE_DICT[connection_id] = {
+                        'file_list' : [os.path.basename(request)],
+                        'iter' : delay_decision()}
             else:
-                ACTIVE_DICT[connection_id]['FILE_LIST'].append(os.path.basename(request))
+                ACTIVE_DICT[connection_id]['file_list'].append(
+                        os.path.basename(request))
 
             if ACTIVE_DICT[connection_id]['iter'].next() == 0:
                 duration = slow_write(output=self.wfile,
@@ -118,7 +120,7 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 print 'Slow: Request took %f seconds' % (duration)
             else:
                 duration = normal_write(self.wfile,
-                        request, **kwargs)
+                        request) #, **kwargs)
                 print 'Normal: Request took %f seconds' % (duration)
         else:
             self.send_error(404)
