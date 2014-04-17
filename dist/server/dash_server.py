@@ -23,10 +23,12 @@ To Test from client:
 
 
 To DO:
-    1. Directory Listing as in SimpleHTTPServer.py
-    2. Guess Type of File
-    3. Translate path from HTML to local path
-    4. Automate the MPD and DASH file LIST generation
+    -- Create a logging module
+    -- Get the IP address of the machine automatically
+    -- Directory Listing as in SimpleHTTPServer.py
+    -- Guess Type of File
+    -- Translate path from HTML to local path
+    -- Automate the MPD and DASH file LIST generation
 """
 import time
 import BaseHTTPServer
@@ -54,7 +56,7 @@ HTML_PAGES = ['index.html']
 MPD_FILES = ['mpd/index.html', 'mpd/x4ukwHdACDw.mpd']
 
 # dict that holds the current active sessions
-# Has the Keys : 
+# Has the Keys :
 #       'session_list' = List of active session ID's = {connection_id, port}
 #       'delay' : iterator to check if we need to delay or not
 
@@ -65,12 +67,6 @@ ACTIVE_DICT = defaultdict(dict)
 #COUNT = 3
 SLOW_RATE = 5
 SLOW_COUNT = 3
-def get_count():
-    """ Module that returns a random value """
-    for i in range(1, 1000):
-        yield SLOW_COUNT*i
-
-COUNT_ITER = get_count()
 DELAY_VALUES = dict()
 
 def delay_decision():
@@ -89,11 +85,10 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         connection_id = (self.client_address[0],
                             os.path.dirname(self.path))
         shutdown = False
-        #kwargs = {}
         if request in HTML_PAGES:
             print "Request HTML %s" % (request)
             duration = normal_write(self.wfile,
-                    request) #, **kwargs)
+                    request)
         elif request in MPD_FILES:
             print "Request for MPD %s" % (request)
             duration = normal_write(self.wfile,
@@ -120,16 +115,16 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 print 'Slow: Request took %f seconds' % (duration)
             else:
                 duration = normal_write(self.wfile,
-                        request) #, **kwargs)
+                        request) 
                 print 'Normal: Request took %f seconds' % (duration)
         else:
             self.send_error(404)
             return
-        self.send_response( 200 )
-        self.send_header('ContentType', 'text/plain;charset=utf-8')
-        self.send_header('Content-Length', str(os.path.getsize(request)))
-        self.send_header('Pragma', 'no-cache' )
-        self.end_headers()
+        #self.send_response( 200 )
+        #self.send_header('ContentType', 'text/plain;charset=utf-8')
+        #self.send_header('Content-Length', str(os.path.getsize(request)))
+        #self.send_header('Pragma', 'no-cache' )
+        #self.end_headers()
         if shutdown:
             self.server.shutdown()
 
