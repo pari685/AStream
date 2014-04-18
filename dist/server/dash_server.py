@@ -36,6 +36,7 @@ import sys
 import os
 from argparse import ArgumentParser
 from collections import defaultdict
+from list_directory import list_directory
 #sys.path.append('..')
 
 # Default values
@@ -52,8 +53,8 @@ HTTP_VERSION = "HTTP/1.1"
 # 10 kbps when size is in bytes
 SLOW_RATE = DEFAULT_SLOW_RATE
 
-HTML_PAGES = ['index.html']
-MPD_FILES = ['mpd/index.html', 'mpd/x4ukwHdACDw.mpd']
+HTML_PAGES = ['index.html', 'list.html']
+MPD_FILES = ['media/mpd/x4ukwHdACDw.mpd']
 
 # dict that holds the current active sessions
 # Has the Keys :
@@ -80,11 +81,18 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     "HTTPHandler to serve the DASH video"
     def do_GET(self):
         "Function to handle the get message"
-        request = self.path.strip("/").split('?')[0]
+        #request = self.path.strip("/").split('?')[0]
+        request = self.path.split('?')[0]
+        if request.startswith('/'):
+            request = request[1:]
         # connection_id = client IP, dirname of file
         connection_id = (self.client_address[0],
                             os.path.dirname(self.path))
         shutdown = False
+        #check if the request is for the a directory
+        if request.endswith('/'):
+            dir_listing = list_directory(request)
+            duration = dir_write(self.wfile, dir_listing)
         if request in HTML_PAGES:
             print "Request HTML %s" % (request)
             duration = normal_write(self.wfile,
@@ -136,6 +144,21 @@ def normal_write(output, request):
         now = time.time()
         output.flush()
     return now - start_time
+
+
+def dir_write(output, data):
+    "Function to write the video onto output stream"
+    start_time = time.time()
+    output.write(data.read())
+    now = time.time()
+    output.flush()
+    return now - start_time
+
+
+
+
+
+
 
 def slow_write(output, request, rate=None):
     """Function to write the video onto output stream with interruptions in
