@@ -1,3 +1,4 @@
+#!/usr/local/bin/python
 """
 Author:            Parikshit Juluri
 Contact:           pjuluri@mail.umkc.edu 
@@ -192,4 +193,6 @@ def main():
     print 'Starting the streaming of the mpd_file'
     if mpd_file:
         start_playback(mpd_file, domian)
-main()
+
+if __name__ == "__main__":
+        main()
