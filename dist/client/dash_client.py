@@ -185,8 +185,8 @@ def start_playback(mpd_file, domain):
 
 def main():
     """ Main Program wrapper"""
-    url = 'http://198.248.242.16:8006/mpd/x4ukwHdACDw.mpd'
-    #url = 'http://127.0.0.1:8006/mpd/x4ukwHdACDw.mpd'
+
+    url = 'http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd'
     print 'Downloading MPD file from %s' % (url)
     mpd_file = get_mpd(url)
     domian = get_domain_name(url)
