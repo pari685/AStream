@@ -37,7 +37,8 @@ from collections import defaultdict
 #sys.path.append('..')
 
 # Default values
-DEFAULT_HOSTNAME = '198.248.242.16'
+#DEFAULT_HOSTNAME = '198.248.242.16'
+DEFAULT_HOSTNAME = '127.0.0.1'
 DEFAULT_PORT = 8006
 DEFAULT_SLOW_RATE = 0
 

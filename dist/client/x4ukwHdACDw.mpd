@@ -20,3 +20,10 @@
     </AdaptationSet>
   </Period>
 </MPD>
+HTTP/1.0 200 OK
+Server: BaseHTTP/0.3 Python/2.7.3
+Date: Wed, 16 Apr 2014 19:05:19 GMT
+ContentType: text/plain;charset=utf-8
+Content-Length: 1642
+Pragma: no-cache
+
