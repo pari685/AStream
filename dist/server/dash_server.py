@@ -42,7 +42,7 @@ from list_directory import list_directory
 # Default values
 DEFAULT_HOSTNAME = '198.248.242.16'
 DEFAULT_PORT = 8006
-DEFAULT_SLOW_RATE = 0
+DEFAULT_SLOW_RATE = 0.001
 
 BLOCK_SIZE = 1024
 
@@ -66,7 +66,6 @@ ACTIVE_DICT = defaultdict(dict)
 # DELAY Parameters
 # Number of the segement to insert delay
 #COUNT = 3
-SLOW_RATE = 5
 SLOW_COUNT = 3
 DELAY_VALUES = dict()
 
@@ -173,7 +172,6 @@ def slow_write(output, request, rate=None):
         current_stream = len(data)
         while (data != ''):
             if rate:
-                print "Slow write of %s at rate %f" % (request, rate)
                 if curr_send_rate(BLOCK_SIZE, last_send - time.time()) >  rate:
                     continue
             output.write(data)
