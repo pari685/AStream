@@ -40,8 +40,8 @@ from list_directory import list_directory
 #sys.path.append('..')
 
 # Default values
-#DEFAULT_HOSTNAME = '198.248.242.16'
-DEFAULT_HOSTNAME = '127.0.0.1'
+DEFAULT_HOSTNAME = '198.248.242.16'
+#DEFAULT_HOSTNAME = '127.0.0.1'
 DEFAULT_PORT = 8006
 DEFAULT_SLOW_RATE = 0.001
 
@@ -93,7 +93,7 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if request.endswith('/'):
             dir_listing = list_directory(request)
             duration = dir_write(self.wfile, dir_listing)
-        if request in HTML_PAGES:
+        elif request in HTML_PAGES:
             print "Request HTML %s" % (request)
             duration = normal_write(self.wfile,
                     request)
@@ -153,12 +153,6 @@ def dir_write(output, data):
     now = time.time()
     output.flush()
     return now - start_time
-
-
-
-
-
-
 
 def slow_write(output, request, rate=None):
     """Function to write the video onto output stream with interruptions in
