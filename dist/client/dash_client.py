@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 """
 Author:            Parikshit Juluri
-Contact:           pjuluri@mail.umkc.edu 
+Contact:           pjuluri@mail.umkc.edu
 
 Testing:
     import dash_client
@@ -15,9 +15,16 @@ import urllib2
 import string
 import random
 import os
+import sys
 import errno
 import timeit
+from argparse import ArgumentParser
 from multiprocessing import Process, Queue
+
+# GLobals for arg parser
+MPD = 'http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd'
+LIST = False
+
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
@@ -105,6 +112,16 @@ def make_sure_path_exists(path):
         if exception.errno != errno.EEXIST:
             raise
 
+
+def print_representations(dp_object):
+    """ Module to print the representations"""
+    print "The DASH media has the following audio representations"
+    for bandwidth in dp_object.audio:
+        print bandwidth
+    print "The DASH media has the following video representations"
+    for bandwidth in dp_object.video:
+        print bandwidth
+
 def start_playback(mpd_file, domain):
     """ Module that downloads the MPD-FIle and download
         all the representations of the Module to download
@@ -119,6 +136,9 @@ def start_playback(mpd_file, domain):
     #dash_video = dash_playback_object.video
     print "The DASH media has %d video representations" % (
                                 len(dp_object.video))
+    if LIST:
+        print_representations(dp_object)
+        return None
     audio_done_queue = Queue()
     video_done_queue = Queue()
 
@@ -155,7 +175,7 @@ def start_playback(mpd_file, domain):
         #stream.
         #The domain + URL from the above list gives the
         #complete path
-        #The fil-identifier is a random string used to
+        #The file-identifier is a random string used to
         #create a temporary folder for current session
         #Video-done queue is used to excahnge information
         #between the process and the calling function.
@@ -184,15 +204,30 @@ def start_playback(mpd_file, domain):
                 print "Finished d/w of  all video segments"
                 break
 
+def create_arguments(parser):
+    """ Adding arguments to the parser"""
+    parser.add_argument('-m', '--MPD',
+                        help=("Url to the MPD File"))
+    parser.add_argument('-l', '--LIST', action='store_true',
+                        help=("List all the representations. Default = %s"
+                              % MPD), default=MPD)
+def update_config(args):
+    """ Module to update the config values with the arguments""" 
+    globals().update(vars(args))
+    return 
+
 def main():
     """ Main Program wrapper"""
-    url = 'http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd'
-    print 'Downloading MPD file from %s' % (url)
-    mpd_file = get_mpd(url)
-    domian = get_domain_name(url)
+    parser = ArgumentParser(description='Process Client paameters')
+    create_arguments(parser)
+    args = parser.parse_args()
+    update_config(args)
+    print 'Downloading MPD file from %s %s' % (MPD, LIST)
+    mpd_file = get_mpd(MPD)
+    domian = get_domain_name(MPD)
     print 'Starting the streaming of the mpd_file'
     if mpd_file:
         start_playback(mpd_file, domian)
 
 if __name__ == "__main__":
-        main()
+    sys.exit(main())

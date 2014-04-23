@@ -40,7 +40,8 @@ from list_directory import list_directory
 #sys.path.append('..')
 
 # Default values
-DEFAULT_HOSTNAME = '198.248.242.16'
+#DEFAULT_HOSTNAME = '198.248.242.16'
+DEFAULT_HOSTNAME = '127.0.0.1'
 DEFAULT_PORT = 8006
 DEFAULT_SLOW_RATE = 0.001
 
@@ -206,7 +207,7 @@ def start_server():
     # Use this Version of HTTP Protocol
     http_server.protocol_version = HTTP_VERSION
     http_server.serve_forever()
-
+    
 def create_arguments(parser):
     """ Adding arguments to the parser"""
     parser.add_argument('-p', '--PORT', type=int,
@@ -225,10 +226,8 @@ def update_config(args):
     globals().update(vars(args))
     return
 
-def main(argv=None):
+def main():
     "Program wrapper"
-    if not argv:
-        argv = sys.argv[:1]
     parser = ArgumentParser(description='Process server parameters')
     create_arguments(parser)
     args = parser.parse_args()
