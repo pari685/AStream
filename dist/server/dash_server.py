@@ -37,6 +37,7 @@ import os
 from argparse import ArgumentParser
 from collections import defaultdict
 from list_directory import list_directory
+import itertools
 #sys.path.append('..')
 
 # Default values
@@ -112,7 +113,7 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             if not connection_id in ACTIVE_DICT:
                 ACTIVE_DICT[connection_id] = {
                         'file_list' : [os.path.basename(request)],
-                        'iter' : delay_decision()}
+                        'iter' : itertools.cycle(delay_decision())}
             else:
                 ACTIVE_DICT[connection_id]['file_list'].append(
                         os.path.basename(request))
@@ -166,9 +167,12 @@ def slow_write(output, request, rate=None):
         last_send = time.time()
         current_stream = len(data)
         while (data != ''):
+            print "In loop"
             if rate:
                 if curr_send_rate(BLOCK_SIZE, last_send - time.time()) >  rate:
                     continue
+                else:
+                    break
             output.write(data)
             last_send = time.time()
             current_stream += len(data)
