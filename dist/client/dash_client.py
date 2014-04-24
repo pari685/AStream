@@ -18,6 +18,7 @@ import os
 import sys
 import errno
 import timeit
+import httplib
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 
@@ -29,7 +30,7 @@ LIST = False
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     try:
-        mpd_data = urllib2.urlopen(url).read()
+        connection = urllib2.urlopen(url, timeout=10)
     except urllib2.HTTPError, error:
         print error.code
         print "Unable to download MPD file HTTP Error.",
@@ -38,6 +39,12 @@ def get_mpd(url):
         print '''URLError. Unable to reach Server.  
         Check if Server active '''
         return None
+    except IOError, httplib.HTTPException:
+        print "Unable to download MPD file HTTP Error."
+        return None
+    
+    mpd_data = connection.read()
+    connection.close()
     mpd_file = url.split('/')[-1]
     mpd_file_handle = open(mpd_file, 'w')
     mpd_file_handle.write(mpd_data)
@@ -62,7 +69,7 @@ def id_generator(size=6):
 def download_segment(segment_url, file_identifier):
     """ Module to download the segement"""
     try:
-        segment_data = urllib2.urlopen(segment_url).read()
+        connection = urllib2.urlopen(segment_url)
     except urllib2.HTTPError, error:
         print error.code
         print "Unable to download DASH Segment file HTTP Error"
@@ -76,8 +83,10 @@ def download_segment(segment_url, file_identifier):
             segment_path)
     make_sure_path_exists(os.path.dirname(segment_filename))
     segment_file_handle = open(segment_filename, 'wb')
-    segment_file_handle.write(segment_data)
+    segment_file_handle.write(connection.read())
+    connection.close()
     segment_file_handle.close()
+    
     return segment_filename
 
 def get_media(domain, media_info, file_identifier, done_queue):
@@ -209,8 +218,8 @@ def create_arguments(parser):
     parser.add_argument('-m', '--MPD',
                         help=("Url to the MPD File"))
     parser.add_argument('-l', '--LIST', action='store_true',
-                        help=("List all the representations. Default = %s"
-                              % MPD), default=MPD)
+                        help=("List all the representations"))
+
 def update_config(args):
     """ Module to update the config values with the arguments""" 
     globals().update(vars(args))
