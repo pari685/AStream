@@ -131,7 +131,7 @@ def print_representations(dp_object):
     for bandwidth in dp_object.video:
         print bandwidth
 
-def start_playback(mpd_file, domain):
+def start_playback_all(mpd_file, domain):
     """ Module that downloads the MPD-FIle and download
         all the representations of the Module to download
         the MPEG-DASH media.
@@ -236,7 +236,7 @@ def main():
     domian = get_domain_name(MPD)
     print 'Starting the streaming of the mpd_file'
     if mpd_file:
-        start_playback(mpd_file, domian)
+        start_playback_all(mpd_file, domian)
 
 if __name__ == "__main__":
     sys.exit(main())
