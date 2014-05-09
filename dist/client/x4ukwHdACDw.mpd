@@ -4,7 +4,7 @@
   <Period>
     <AdaptationSet mimeType="audio/mp4" segmentAlignment="true" startWithSAP="1">
       <Representation bandwidth="127965" codecs="mp4a.40.02" id="audio.und">
-        <SegmentTemplate duration="10000" initialization="media/x4ukwHdACDw/audio/und/init.mp4" media="audio/und/seg-$Number%04d$.m4f" startNumber="0" timescale="1000"/>
+        <SegmentTemplate duration="10000" initialization="media/x4ukwHdACDw/audio/und/init.mp4" media="media/x4ukwHdACDw/audio/und/seg-$Number%04d$.m4f" startNumber="0" timescale="1000"/>
       </Representation>
     </AdaptationSet>
     <AdaptationSet mimeType="video/mp4" segmentAlignment="true" startWithSAP="1">
@@ -19,5 +19,5 @@
       </Representation>
     </AdaptationSet>
   </Period>
+  <filename>"media/x4ukwHdACDw/x4ukwHdACDw_list.txt"</filename>
 </MPD>
-
