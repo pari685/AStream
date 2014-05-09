@@ -3,7 +3,6 @@
     Contact : pjuluri@umkc.edu
 
 """
-
 import re
 
 # Try to import the C implementation of ElementTree which is faster
@@ -13,14 +12,12 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
-
 MEDIA_PRESENTATION_DURATION = 'mediaPresentationDuration'
 MIN_BUFFER_TIME = 'minBufferTime'
 
 def get_tag_name(xml_element):
     """ Module to remove the xmlns tag from the name"""
     return xml_element[xml_element.find('}')+1:]
-
 
 def get_playback_time(playback_duration):
     """ Get the playback time(in seconds) from the string:
@@ -41,8 +38,6 @@ def get_playback_time(playback_duration):
             total_duration += float(val) * 60 * 60
     return total_duration
 
-
-
 class MediaObject(object):
     """Object to handel audio and video stream """
     def __init__(self):
@@ -53,7 +48,6 @@ class MediaObject(object):
         self.initialization = None
         self.base_url = None
         self.url_list = list()
-
 
 class DashPlayback:
     """ 
