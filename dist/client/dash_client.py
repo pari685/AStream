@@ -7,6 +7,9 @@ Testing:
     import dash_client
     mpd_file = <MPD_FILE>
     dash_client.playback_duration(mpd_file, 'http://198.248.242.16:8005/')
+From commandline:
+    python dash_client.py -m "http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd" -p "smart"
+
 """
 import read_mpd
 import urlparse
@@ -29,6 +32,9 @@ PLAYBACK = 'all'
 
 ASCII_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 ASCII_DIGITS = '0123456789'
+
+# Testing
+FIXED_SEGMENT_SIZE = 1000
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
@@ -125,18 +131,18 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
     """
     bandwidth, media_dict = media_info
     media = media_dict[bandwidth]
-    print "GET MEDIA", file_identifier
     media_start_time = timeit.default_timer()
     for segment in [media.initialization] + media.url_list:
         start_time = timeit.default_timer()
         segment_url = urlparse.urljoin(domain, segment)
+        print "Downloading Segment bandwidth %d URL %s" % (
+                bandwidth, segment_url)
+
         segment_file = download_segment(segment_url,
                                         file_identifier)
         elapsed = timeit.default_timer() - start_time
         if segment_file:
             done_queue.put((bandwidth, segment_url, elapsed))
-        print "Downloaded Segment bandwidth %d URL %s" % (
-                bandwidth, segment)
     media_download_time = timeit.default_timer() - media_start_time
     done_queue.put((bandwidth, 'STOP', media_download_time))
     return None
@@ -201,23 +207,32 @@ class DASHPlayback(object):
         """ Module to stop the playback"""
         # TODO
 
+
+def cal_next_bw(current_bandwidth, bandwidths, duration, segment_sizes):
+    """ Module to caluculate the next bandwidth to be downloaded"""
+    #TODO calculate the Next segment
+    return current_bandwidth
+    
+
 def start_playback_smart(dp_object, domain):
     """ Module that downloads the MPD-FIle and download
         all the representations of the Module to download
         the MPEG-DASH media.
     """
+
     audio_done_queue = Queue()
-    video_done_queue = Queue()
     processes = []
     file_identifier = id_generator(6)
     print "FILE IDENT", file_identifier
 
     #for bandwidth in dp_object.audio:
+    #    # Get the list of URL's (relative location) for the audio 
+    #    ##################
     #    dp_object.audio[bandwidth] = read_mpd.get_url_list(
     #            bandwidth, dp_object.audio[bandwidth],
     #            dp_object.playback_duration)
-    #    process = Process(target=get_media, args=(domain,
-    #            (bandwidth, dp_object.audio), 
+    #    process = Process(target=get_media_all, args=(domain,
+    #            (bandwidth, dp_object.audio),
     #            file_identifier,
     #            audio_done_queue))
     #    process.start()
@@ -229,22 +244,30 @@ def start_playback_smart(dp_object, domain):
                 dp_object.playback_duration)
         media_url = [dp_object.video[bandwidth].initialization] + dp_object.video[bandwidth].url_list
         for segment_count, segment_url in enumerate(media_url):
-            print segment_url, segment_count
-            dp_list[segment_count][bandwidth] = segment_url
+            segment_size = FIXED_SEGMENT_SIZE
+            dp_list[segment_count][bandwidth] = (segment_url, segment_size)
     bandwidths = dp_object.video.keys()
-    #print dp_list
-    for segment in dp_list:
-        segment_path =  dp_list[segment][bandwidths[0]]
+    current_bandwidth = None
+    duration = 0
+    segment_sizes = None
+    for number, segment in enumerate(dp_list):
+        if number == 0:
+            current_bandwidth = bandwidths[0]
+        else:
+            current_bandwidth = cal_next_bw(current_bandwidth, bandwidths, duration, segment_sizes)
+        print "Current Bandwidth", current_bandwidth
+        segment_path, segment_size =  dp_list[segment][current_bandwidth]
+
         segment_url = urlparse.urljoin(domain, 
                 segment_path)
         start_time = timeit.default_timer()
         try:
             download_segment_single_folder(segment_url, file_identifier)
         except IOError, e:
-            print "Unable to save segement"
+            print "Unable to save segement", e
             return None
-        duration = timeit.default_timer() - start_time 
-        print ">>>>>>", dp_list[segment][349683], duration
+        elapsed = timeit.default_timer() - start_time 
+        print ">>>>>>", dp_list[segment][current_bandwidth], elapsed
 
 def start_playback_all(dp_object, domain):
     """ Module that downloads the MPD-FIle and download
@@ -254,7 +277,6 @@ def start_playback_all(dp_object, domain):
     audio_done_queue = Queue()
     video_done_queue = Queue()
     processes = []
-    
     file_identifier = id_generator(6)
     print "FILE IDENT", file_identifier
 
@@ -283,17 +305,7 @@ def start_playback_all(dp_object, domain):
         dp_object.video[bandwidth] = read_mpd.get_url_list(
                 bandwidth, dp_object.video[bandwidth],
                 dp_object.playback_duration)
-        #Create a new process to download the audio 
-        #stream.
-        #The domain + URL from the above list gives the
-        #complete path
-        #The file-identifier is a random string used to
-        #create a temporary folder for current session
-        #Video-done queue is used to excahnge information
-        #between the process and the calling function.
-        #'STOP' is added to the queue to indicate the 
-        #end of the download of the sesson
-
+        # Same as download audio
         process = Process(target=get_media_all, args=(domain,
                 (bandwidth, dp_object.video),
                 file_identifier, video_done_queue))
@@ -324,6 +336,8 @@ def create_arguments(parser):
             help=("List all the representations"))
     parser.add_argument('-p', '--PLAYBACK',
             help="Playback type (all, or smart)")
+    parser.add_argument('-s', '--simulate', action='store_true',
+            help="Simulate without actually downloading. TODO")
 
 def update_config(args):
     """ Module to update the config values with the arguments""" 
@@ -355,7 +369,6 @@ def main():
     if LIST:
         print_representations(dp_object)
         return None
-
     if "all" in PLAYBACK.lower():
         if mpd_file:
             start_playback_all(dp_object, domain)
