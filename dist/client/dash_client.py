@@ -24,6 +24,15 @@ import httplib
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
+import logging
+# create logger
+LOG_NAME = 'dash_log'
+LOG_LEVEL = logging.DEBUG
+# Set '-' to print to screen
+LOG_FILENAME = '-'
+# Set 
+LOG = None
+
 # GLobals for arg parser with the default values
 # Not sure if this is the correct way ....
 MPD = 'http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd'
@@ -35,6 +44,21 @@ ASCII_DIGITS = '0123456789'
 
 # Testing
 FIXED_SEGMENT_SIZE = 1000
+
+
+def configure_log_file():
+    print "Configuring log file"
+    global LOG
+    LOG = logging.getLogger(LOG_NAME)
+    if LOG_FILENAME == '-':
+        handler = logging.StreamHandler(sys.stdout)
+    else:
+        handler = logging.FileHandler(filename=LOG_FILENAME)
+    LOG.setLevel(LOG_LEVEL)
+    log_formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)d - '
+                 '%(levelname)s - %(message)s')
+    handler.setFormatter(log_formatter)
+    LOG.addHandler(handler)
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
@@ -346,6 +370,7 @@ def update_config(args):
 
 def main():
     """ Main Program wrapper"""
+    configure_log_file()
     parser = ArgumentParser(description='Process Client paameters')
     create_arguments(parser)
     args = parser.parse_args()
@@ -373,7 +398,7 @@ def main():
         if mpd_file:
             start_playback_all(dp_object, domain)
     elif "smart" in PLAYBACK.lower():
-        print "Start SMART PLayback"
+        LOG.critical("Start SMART PLayback")
         start_playback_smart(dp_object, domain)
 
 
