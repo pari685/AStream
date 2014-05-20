@@ -8,8 +8,10 @@ Testing:
     mpd_file = <MPD_FILE>
     dash_client.playback_duration(mpd_file, 'http://198.248.242.16:8005/')
 From commandline:
-    python dash_client.py -m "http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd" -p "smart"
+    python dash_client.py -m "http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd" -p "all"
+    python dash_client.py -m "http://127.0.0.1:2006/media/mpd/x4ukwHdACDw.mpd" -p "smart"
 
+TODO : Better handling of the case where the file is not present on the server. (Getting stuck)
 """
 import read_mpd
 import urlparse
@@ -107,7 +109,6 @@ def id_generator(size=6):
     chars =  ASCII_UPPERCASE + ASCII_DIGITS
     return 'TEMP_' + ''.join(random.choice(chars) for _ in range(size))
 
-
 def download_segment_single_folder(segment_url, dash_folder):
     """ Module to download the segement"""
     try:
@@ -186,7 +187,7 @@ def print_representations(dp_object):
     print "The DASH media has the following video representations"
     for bandwidth in dp_object.video:
         print bandwidth
-
+'''
 class DASHPlayback(object):
     """ Function to simulate the playback
         segment_info = {'url' = None,
@@ -228,10 +229,14 @@ class DASHPlayback(object):
     def stop_playback(self):
         """ Module to stop the playback"""
         # TODO
+'''
 
 def cal_next_bw(current_bandwidth, bandwidths, duration, segment_sizes):
     """ Module to caluculate the next bandwidth to be downloaded"""
     #TODO calculate the Next segment
+    if not current_bandwidth:
+        bandwidths.sort()
+        return bandwidths[0]
     return current_bandwidth
     
 def start_playback_smart(dp_object, domain):
@@ -244,27 +249,29 @@ def start_playback_smart(dp_object, domain):
     file_identifier = id_generator()
     config_dash.LOG.info("The segments are stored in %s" % file_identifier)
     for bandwidth in dp_object.audio:
-        dp_object.audio[bandwidth] = read_mpd.get_url_list(
-                bandwidth, dp_object.audio[bandwidth],
-                dp_object.playback_duration)
-        process = Process(target=get_media_all, args=(domain,
-                (bandwidth, dp_object.audio),
-                file_identifier,
-                audio_done_queue))
+        dp_object.audio[bandwidth] = read_mpd.get_url_list( bandwidth, 
+                                                      dp_object.audio[bandwidth], 
+                                                      dp_object.playback_duration)
+        process = Process(target=get_media_all, args=(domain, 
+                                                      (bandwidth, dp_object.audio), 
+                                                      file_identifier, 
+                                                      audio_done_queue))
         process.start()
         processes.append(process)
     dp_list = defaultdict(defaultdict)
     for bandwidth in dp_object.video:
-        dp_object.video[bandwidth] = read_mpd.get_url_list(
-                bandwidth, dp_object.video[bandwidth],
-                dp_object.playback_duration)
-        media_url = [dp_object.video[bandwidth].initialization] + dp_object.video[bandwidth].url_list
-        for segment_count, segment_url in enumerate(media_url):
+        dp_object.video[bandwidth] = read_mpd.get_url_list( bandwidth, 
+                                                      dp_object.video[bandwidth],
+                                                      dp_object.playback_duration)
+        media_urls = [dp_object.video[bandwidth].initialization] + dp_object.video[bandwidth].url_list
+        for segment_count, segment_url in enumerate(media_urls):
             segment_size = FIXED_SEGMENT_SIZE
             dp_list[segment_count][bandwidth] = (segment_url, segment_size)
     bandwidths = dp_object.video.keys()
+    bandwidths.sort()
     current_bandwidth = None
     duration = 0
+    # TODO get the segment sizes for the segments
     segment_sizes = None
     for number, segment in enumerate(dp_list):
         if number == 0:
@@ -274,8 +281,7 @@ def start_playback_smart(dp_object, domain):
         config_dash.LOG.info("Current Bandwidth = %s" % str(current_bandwidth))
         segment_path, segment_size =  dp_list[segment][current_bandwidth]
 
-        segment_url = urlparse.urljoin(domain, 
-                segment_path)
+        segment_url = urlparse.urljoin(domain, segment_path)
         start_time = timeit.default_timer()
         try:
             download_segment_single_folder(segment_url, file_identifier)
@@ -289,9 +295,8 @@ def start_playback_smart(dp_object, domain):
                                           str(elapsed)))
 
 def start_playback_all(dp_object, domain):
-    """ Module that downloads the MPD-FIle and download
-        all the representations of the Module to download
-        the MPEG-DASH media.
+    """ Module that downloads the MPD-FIle and download all the representations of 
+        the Module to download the MPEG-DASH media.
     """
     audio_done_queue = Queue()
     video_done_queue = Queue()
@@ -367,38 +372,45 @@ def update_config(args):
 
 def main():
     """ Main Program wrapper"""
+    # configure the log file
     configure_log_file()
     
-    
+    # Create arguments
     parser = ArgumentParser(description='Process Client paameters')
     create_arguments(parser)
-    
     args = parser.parse_args()
     update_config(args)
+    
     if not MPD:
         print "ERROR: Please provide the URL to the MPD file. Try Again.."
         return
     config_dash.LOG.info('Downloading MPD file %s' % MPD)
+    
+    # Retrieve the MPD files for the video
     mpd_file = get_mpd(MPD)
     domain = get_domain_name(MPD)
     dp_object = read_mpd.DashPlayback()
     dp_object = read_mpd.read_mpd(mpd_file, dp_object)
-   
     config_dash.LOG.info("The DASH media has %d audio representations" % (
             len(dp_object.audio)))
-    #dash_video = dash_playback_object.video
     config_dash.LOG.info("The DASH media has %d video representations" %( 
                                 len(dp_object.video)))
+
     if LIST:
+        # Print the representations and and EXIT 
         print_representations(dp_object)
         return None
+    
     if "all" in PLAYBACK.lower():
         if mpd_file:
             config_dash.LOG.critical("Start ALL Parallel PLayback")
             start_playback_all(dp_object, domain)
     elif "smart" in PLAYBACK.lower():
-        config_dash.LOG.critical("Start SMART PLayback")
+        config_dash.LOG.critical("Start SMART Playback")
         start_playback_smart(dp_object, domain)
+    else:
+        config_dash.LOG.error("Unknow Playback parameter")
+        return None
 
 if __name__ == "__main__":
     sys.exit(main())
