@@ -57,6 +57,8 @@ SLOW_RATE = DEFAULT_SLOW_RATE
 
 HTML_PAGES = ['index.html', 'list.html']
 MPD_FILES = ['media/mpd/x4ukwHdACDw.mpd']
+HTML_404 = "404.html"
+
 
 # dict that holds the current active sessions
 # Has the Keys :
@@ -139,11 +141,18 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 def normal_write(output, request):
     "Function to write the video onto output stream"
-    with open(request, 'r') as request_file:
-        start_time = time.time()
-        output.write(request_file.read())
-        now = time.time()
-        output.flush()
+    try:
+        with open(request, 'r') as request_file:
+            start_time = time.time()
+            output.write(request_file.read())
+            now = time.time()
+            output.flush()
+    except IOError:
+        with open(HTML_404, 'r') as request_file:
+            start_time = time.time()
+            output.write(request_file.read())
+            now = time.time()
+            output.flush()
     return now - start_time
 
 

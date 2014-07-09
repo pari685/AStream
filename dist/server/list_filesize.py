@@ -42,6 +42,10 @@ def main():
     parser = ArgumentParser(description='Process arguments')
     create_arguments(parser)
     args = parser.parse_args()
+    if not args.list_file or not args.path:
+        print "Please Eneter the list_file and path.\n Exitting..."
+        print args.list_file, args.path
+        return
     list_file = args.list_file
     path = args.path
     print "list_file", list_file, 'path', path
