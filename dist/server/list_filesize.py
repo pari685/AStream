@@ -4,11 +4,12 @@ Module to create a file with the file sizes
 From : http://mayankjohri.wordpress.com/2008/07/02/create-list-of-files-in-a-dir-tree/
 
 """
+
 import os
 import sys
 from argparse import ArgumentParser
-LIST_FILE = "file_sizes.txt"
 
+LIST_FILE = "file_sizes.txt"
 
 def get_filesize(path):
     """ Module to list file sizes"""
