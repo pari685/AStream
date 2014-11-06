@@ -41,6 +41,7 @@ ASCII_DIGITS = '0123456789'
 # Testing
 FIXED_SEGMENT_SIZE = 1000
 
+
 def configure_log_file():
     """ Module to configure the log parameters 
     and the log file.
@@ -59,10 +60,10 @@ def configure_log_file():
     else:
         handler = logging.FileHandler(filename=LOG_FILENAME)
     config_dash.LOG.setLevel(config_dash.LOG_LEVEL)
-    log_formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)d - '
-                 '%(levelname)s - %(message)s')
+    log_formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
     handler.setFormatter(log_formatter)
     config_dash.LOG.addHandler(handler)
+
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
@@ -72,9 +73,9 @@ def get_mpd(url):
         config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
         return None
     except urllib2.URLError:
-        error_message =  "URLError. Unable to reach Server.Check if Server active"
-        config_dash.LOG.error(message)
-        print message
+        error_message = "URLError. Unable to reach Server.Check if Server active"
+        config_dash.LOG.error(error_message)
+        print error_message
         return None
     except IOError, httplib.HTTPException:
         message = "Unable to , file_identifierdownload MPD file HTTP Error."
@@ -89,10 +90,12 @@ def get_mpd(url):
     mpd_file_handle.close()
     return mpd_file
 
+
 def get_bandwidth(data, duration):
     """ Module to determine the bandwidth for a segment
     download"""
-    return (data*8/duration)
+    return data*8/duration
+
 
 def get_domain_name(url):
     """ Module to obtain the domain name from the URL
@@ -102,26 +105,27 @@ def get_domain_name(url):
     domain = '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
     return domain
 
+
 def id_generator(size=6):
     """ Module to create a random string with uppercase 
         and digits.
     """
-    chars =  ASCII_UPPERCASE + ASCII_DIGITS
+    chars = ASCII_UPPERCASE + ASCII_DIGITS
     return 'TEMP_' + ''.join(random.choice(chars) for _ in range(size))
 
-def download_segment_single_folder(segment_url, dash_folder):
+
+def download_segment(segment_url, dash_folder):
     """ Module to download the segement"""
     try:
         connection = urllib2.urlopen(segment_url)
     except urllib2.HTTPError, error:
-        config_dash.LOG.error("Unable to download DASH Segment.HTTP Error:%s " %str(error.code))
+        config_dash.LOG.error("Unable to download DASH Segment.HTTP Error:%s " % str(error.code))
         return None
     parsed_uri = urlparse.urlparse(segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
     while segment_path.startswith('/'):
         segment_path = segment_path[1:]        
-    segment_filename = os.path.join(dash_folder,
-            os.path.basename(segment_path))
+    segment_filename = os.path.join(dash_folder, os.path.basename(segment_path))
     make_sure_path_exists(os.path.dirname(segment_filename))
     segment_file_handle = open(segment_filename, 'wb')
     segment_file_handle.write(connection.read())
@@ -129,25 +133,26 @@ def download_segment_single_folder(segment_url, dash_folder):
     segment_file_handle.close()
     return segment_filename
 
-def download_segment(segment_url, file_identifier):
-    """ Module to download the segement"""
-    try:
-        connection = urllib2.urlopen(segment_url)
-    except urllib2.HTTPError, error:
-        print "Unable to download DASH Segment file HTTP Error: %s" % error.code
-        return None
-    parsed_uri = urlparse.urlparse(segment_url)
-    segment_path = '{uri.path}'.format(uri=parsed_uri)
-    while segment_path.startswith('/'):
-        segment_path = segment_path[1:]
-    segment_filename = os.path.join(file_identifier,
-            segment_path)
-    make_sure_path_exists(os.path.dirname(segment_filename))
-    segment_file_handle = open(segment_filename, 'wb')
-    segment_file_handle.write(connection.read())
-    connection.close()
-    segment_file_handle.close()
-    return segment_filename
+
+# def download_segment(segment_url, file_identifier):
+#     """ Module to download the segement"""
+#     try:
+#         connection = urllib2.urlopen(segment_url)
+#     except urllib2.HTTPError, error:
+#         print "Unable to download DASH Segment file HTTP Error: %s" % error.code
+#         return None
+#     parsed_uri = urlparse.urlparse(segment_url)
+#     segment_path = '{uri.path}'.format(uri=parsed_uri)
+#     while segment_path.startswith('/'):
+#         segment_path = segment_path[1:]
+#     segment_filename = os.path.join(file_identifier, segment_path)
+#     make_sure_path_exists(os.path.dirname(segment_filename))
+#     segment_file_handle = open(segment_filename, 'wb')
+#     segment_file_handle.write(connection.read())
+#     connection.close()
+#     segment_file_handle.close()
+#     return segment_filename
+
 
 def get_media_all(domain, media_info, file_identifier, done_queue):
     """ Download the media from the list of URL's in media
@@ -168,6 +173,7 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
     done_queue.put((bandwidth, 'STOP', media_download_time))
     return None
 
+
 def make_sure_path_exists(path):
     """ Module to make sure the path exists if not create it
     """
@@ -177,6 +183,7 @@ def make_sure_path_exists(path):
     except OSError as exception:
         if exception.errno != errno.EEXIST:
             raise
+
 
 def print_representations(dp_object):
     """ Module to print the representations"""
@@ -231,6 +238,7 @@ class DASHPlayback(object):
         # TODO
 '''
 
+
 def cal_next_bw(current_bandwidth, bandwidths, duration, segment_sizes):
     """ Module to caluculate the next bandwidth to be downloaded"""
     #TODO calculate the Next segment
@@ -238,7 +246,8 @@ def cal_next_bw(current_bandwidth, bandwidths, duration, segment_sizes):
         bandwidths.sort()
         return bandwidths[0]
     return current_bandwidth
-    
+
+
 def start_playback_smart(dp_object, domain):
     """ Module that downloads the MPD-FIle and download
         all the representations of the Module to download
@@ -249,9 +258,8 @@ def start_playback_smart(dp_object, domain):
     file_identifier = id_generator()
     config_dash.LOG.info("The segments are stored in %s" % file_identifier)
     for bandwidth in dp_object.audio:
-        dp_object.audio[bandwidth] = read_mpd.get_url_list( bandwidth, 
-                                                      dp_object.audio[bandwidth], 
-                                                      dp_object.playback_duration)
+        dp_object.audio[bandwidth] = read_mpd.get_url_list(bandwidth, dp_object.audio[bandwidth],
+                                                           dp_object.playback_duration)
         process = Process(target=get_media_all, args=(domain, 
                                                       (bandwidth, dp_object.audio), 
                                                       file_identifier, 
@@ -260,9 +268,8 @@ def start_playback_smart(dp_object, domain):
         processes.append(process)
     dp_list = defaultdict(defaultdict)
     for bandwidth in dp_object.video:
-        dp_object.video[bandwidth] = read_mpd.get_url_list( bandwidth, 
-                                                      dp_object.video[bandwidth],
-                                                      dp_object.playback_duration)
+        dp_object.video[bandwidth] = read_mpd.get_url_list(bandwidth, dp_object.video[bandwidth],
+                                                           dp_object.playback_duration)
         media_urls = [dp_object.video[bandwidth].initialization] + dp_object.video[bandwidth].url_list
         for segment_count, segment_url in enumerate(media_urls):
             segment_size = FIXED_SEGMENT_SIZE
@@ -279,20 +286,20 @@ def start_playback_smart(dp_object, domain):
         else:
             current_bandwidth = cal_next_bw(current_bandwidth, bandwidths, duration, segment_sizes)
         config_dash.LOG.info("Current Bandwidth = %s" % str(current_bandwidth))
-        segment_path, segment_size =  dp_list[segment][current_bandwidth]
+        segment_path, segment_size = dp_list[segment][current_bandwidth]
 
         segment_url = urlparse.urljoin(domain, segment_path)
         start_time = timeit.default_timer()
         try:
-            download_segment_single_folder(segment_url, file_identifier)
+            download_segment(segment_url, file_identifier)
         except IOError, e:
             config_dash.LOG.error("Unable to save segement %s" % e)
             return None
         elapsed = timeit.default_timer() - start_time 
         config_dash.LOG.info("Downloaded %s. Size = %s in %s seconds" % (
-                                         dp_list[segment][current_bandwidth][0], 
-                                         dp_list[segment][current_bandwidth][1],
-                                          str(elapsed)))
+            dp_list[segment][current_bandwidth][0], dp_list[segment][current_bandwidth][1],
+            str(elapsed)))
+
 
 def start_playback_all(dp_object, domain):
     """ Module that downloads the MPD-FIle and download all the representations of 
@@ -305,9 +312,8 @@ def start_playback_all(dp_object, domain):
     config_dash.LOG.info("File Segements are in %s" % file_identifier)
     for bandwidth in dp_object.audio:
         # Get the list of URL's (relative location) for the audio 
-        dp_object.audio[bandwidth] = read_mpd.get_url_list(
-                bandwidth, dp_object.audio[bandwidth],
-                dp_object.playback_duration)
+        dp_object.audio[bandwidth] = read_mpd.get_url_list(bandwidth, dp_object.audio[bandwidth],
+                                                           dp_object.playback_duration)
         # Create a new process to download the audio stream.
         # The domain + URL from the above list gives the 
         # complete path
@@ -317,22 +323,17 @@ def start_playback_all(dp_object, domain):
         # between the process and the calling function.
         # 'STOP' is added to the queue to indicate the end 
         # of the download of the sesson
-        process = Process(target=get_media_all, args=(domain,
-                (bandwidth, dp_object.audio), 
-                file_identifier,
-                audio_done_queue))
+        process = Process(target=get_media_all, args=(domain, (bandwidth, dp_object.audio),
+                                                      file_identifier, audio_done_queue))
         process.start()
         processes.append(process)
 
     for bandwidth in dp_object.video:
-        dp_object.video[bandwidth] = read_mpd.get_url_list(
-                bandwidth, dp_object.video[bandwidth],
-                dp_object.playback_duration)
+        dp_object.video[bandwidth] = read_mpd.get_url_list(bandwidth, dp_object.video[bandwidth],
+                                                           dp_object.playback_duration)
         # Same as download audio
-        process = Process(target=get_media_all, args=(domain,
-                (bandwidth, dp_object.video),
-                file_identifier, 
-                video_done_queue))
+        process = Process(target=get_media_all, args=(domain, (bandwidth, dp_object.video),
+                                                      file_identifier, video_done_queue))
         process.start()
         processes.append(process)
 
@@ -343,21 +344,22 @@ def start_playback_all(dp_object, domain):
     for queue_values in iter(video_done_queue.get, None):
         bandwidth, status, elapsed = queue_values
         if status == 'STOP':
-            config_dash.LOG.critical("Completed download of %s in %f " % (
-                    bandwidth, elapsed))
+            config_dash.LOG.critical("Completed download of %s in %f " % (bandwidth, elapsed))
+
             count += 1
             if count == len(dp_object.video):
                 # If the download of all the videos is done the stop the
                 config_dash.LOG.critical("Finished download of  all video segments")
                 break
 
+
 def create_arguments(parser):
     """ Adding arguments to the parser"""
     
     parser.add_argument('-m', '--MPD',                   
-                        help=("Url to the MPD File"))
+                        help="Url to the MPD File")
     parser.add_argument('-l', '--LIST', action='store_true',
-                        help=("List all the representations"))
+                        help="List all the representations")
     parser.add_argument('-p', '--PLAYBACK',
                         default="smart",
                         help="Playback type (all, or smart)")
@@ -365,16 +367,17 @@ def create_arguments(parser):
                         default=False,
                         help="Simulate without actually downloading. TODO")
 
+
 def update_config(args):
     """ Module to update the config values with the arguments""" 
     globals().update(vars(args))
-    return 
+    return None
+
 
 def main():
     """ Main Program wrapper"""
     # configure the log file
     configure_log_file()
-    
     # Create arguments
     parser = ArgumentParser(description='Process Client paameters')
     create_arguments(parser)
@@ -383,7 +386,7 @@ def main():
     
     if not MPD:
         print "ERROR: Please provide the URL to the MPD file. Try Again.."
-        return
+        return None
     config_dash.LOG.info('Downloading MPD file %s' % MPD)
     
     # Retrieve the MPD files for the video
@@ -391,10 +394,8 @@ def main():
     domain = get_domain_name(MPD)
     dp_object = read_mpd.DashPlayback()
     dp_object = read_mpd.read_mpd(mpd_file, dp_object)
-    config_dash.LOG.info("The DASH media has %d audio representations" % (
-            len(dp_object.audio)))
-    config_dash.LOG.info("The DASH media has %d video representations" %( 
-                                len(dp_object.video)))
+    config_dash.LOG.info("The DASH media has %d audio representations" % len(dp_object.audio))
+    config_dash.LOG.info("The DASH media has %d video representations" % len(dp_object.video))
 
     if LIST:
         # Print the representations and and EXIT 
@@ -411,6 +412,7 @@ def main():
     else:
         config_dash.LOG.error("Unknow Playback parameter")
         return None
+
 
 if __name__ == "__main__":
     sys.exit(main())

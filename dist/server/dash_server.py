@@ -38,7 +38,7 @@ from argparse import ArgumentParser
 from collections import defaultdict
 from list_directory import list_directory
 import itertools
-#sys.path.append('..')
+# sys.path.append('..')
 
 # Default values
 DEFAULT_HOSTNAME = '198.248.242.16'
@@ -59,7 +59,6 @@ HTML_PAGES = ['index.html', 'list.html']
 MPD_FILES = ['media/mpd/x4ukwHdACDw.mpd']
 HTML_404 = "404.html"
 
-
 # dict that holds the current active sessions
 # Has the Keys :
 #       'session_list' = List of active session ID's = {connection_id, port}
@@ -73,6 +72,7 @@ ACTIVE_DICT = defaultdict(dict)
 SLOW_COUNT = 3
 DELAY_VALUES = dict()
 
+
 def delay_decision():
     """ Module to decide if the segemnt is to be delayed or not"""
     for i in range(30):
@@ -80,54 +80,53 @@ def delay_decision():
             yield 0
         yield 1
 
+
 class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    "HTTPHandler to serve the DASH video"
+    """HTTPHandler to serve the DASH video"""
+
     def do_GET(self):
-        "Function to handle the get message"
+        """Function to handle the get message"""
         #request = self.path.strip("/").split('?')[0]
         request = self.path.split('?')[0]
         if request.startswith('/'):
             request = request[1:]
         # connection_id = client IP, dirname of file
         connection_id = (self.client_address[0],
-                            os.path.dirname(self.path))
+                         os.path.dirname(self.path))
         shutdown = False
         #check if the request is for the a directory
         if request.endswith('/'):
             dir_listing = list_directory(request)
             duration = dir_write(self.wfile, dir_listing)
         elif request in HTML_PAGES:
-            print "Request HTML %s" % (request)
-            duration = normal_write(self.wfile,
-                    request)
+            print "Request HTML %s" % request
+            duration = normal_write(self.wfile, request)
         elif request in MPD_FILES:
-            print "Request for MPD %s" % (request)
-            duration = normal_write(self.wfile,
-                    request) #, **kwargs)
+            print "Request for MPD %s" % request
+            duration = normal_write(self.wfile, request)  #, **kwargs)
             # assuming that the new session always
             # starts with the download of the MPD file
             # Making sure that older sessions are not
             # in the ACTIVE_DICT
             if connection_id in ACTIVE_DICT:
-                del(ACTIVE_DICT[connection_id])
+                del (ACTIVE_DICT[connection_id])
         elif request.split('.')[-1] in ['m4f', 'mp4']:
-            print "Request for DASH Media %s" % (request)
+            print "Request for DASH Media %s" % request
             if not connection_id in ACTIVE_DICT:
                 ACTIVE_DICT[connection_id] = {
-                        'file_list' : [os.path.basename(request)],
-                        'iter' : itertools.cycle(delay_decision())}
+                    'file_list': [os.path.basename(request)],
+                    'iter': itertools.cycle(delay_decision())}
             else:
                 ACTIVE_DICT[connection_id]['file_list'].append(
-                        os.path.basename(request))
+                    os.path.basename(request))
 
             if ACTIVE_DICT[connection_id]['iter'].next() == 0:
-                duration = slow_write(output=self.wfile,
-                        request=request, rate=SLOW_RATE)
-                print 'Slow: Request took %f seconds' % (duration)
+                duration = slow_write(output=self.wfile, request=request, rate=SLOW_RATE)
+                print 'Slow: Request took %f seconds' % duration
             else:
                 duration = normal_write(self.wfile,
-                        request) 
-                print 'Normal: Request took %f seconds' % (duration)
+                                        request)
+                print 'Normal: Request took %f seconds' % duration
         else:
             self.send_error(404)
             return
@@ -139,8 +138,9 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if shutdown:
             self.server.shutdown()
 
+
 def normal_write(output, request):
-    "Function to write the video onto output stream"
+    """Function to write the video onto output stream"""
     try:
         with open(request, 'r') as request_file:
             start_time = time.time()
@@ -157,12 +157,13 @@ def normal_write(output, request):
 
 
 def dir_write(output, data):
-    "Function to write the video onto output stream"
+    """Function to write the video onto output stream"""
     start_time = time.time()
     output.write(data.read())
     now = time.time()
     output.flush()
     return now - start_time
+
 
 def slow_write(output, request, rate=None):
     """Function to write the video onto output stream with interruptions in
@@ -175,10 +176,10 @@ def slow_write(output, request, rate=None):
         output.write(data)
         last_send = time.time()
         current_stream = len(data)
-        while (data != ''):
+        while data != '':
             print "In loop"
             if rate:
-                if curr_send_rate(BLOCK_SIZE, last_send - time.time()) >  rate:
+                if curr_send_rate(BLOCK_SIZE, last_send - time.time()) > rate:
                     continue
                 else:
                     break
@@ -189,43 +190,46 @@ def slow_write(output, request, rate=None):
         now = time.time()
         output.flush()
     print 'Served %d bytes of file: %s in %f seconds' % (
-                    current_stream, request, now - start_time)
+        current_stream, request, now - start_time)
     return now - start_time
+
 
 def curr_send_rate(data_size, time_to_send_data):
     """ Method to calculate the current rate at which the data 
         is being sent. Data_size in byes
         The return value is in kbps
     """
+    rate = None
     while True:
         try:
-            rate = data_size * 8 / (time_to_send_data) / 1000
+            rate = data_size * 8 / time_to_send_data / 1000
             break
         except ZeroDivisionError:
             continue
     return rate
+
 
 def start_server():
     """ Module to start the server"""
     http_server = BaseHTTPServer.HTTPServer((HOSTNAME, PORT),
                                             MyHTTPRequestHandler)
     print " ".join(("Listening on ", HOSTNAME, " at Port ",
-        str(PORT), " - press ctrl-c to stop"))
+                    str(PORT), " - press ctrl-c to stop"))
     # Use this Version of HTTP Protocol
     http_server.protocol_version = HTTP_VERSION
     http_server.serve_forever()
-    
+
+
 def create_arguments(parser):
     """ Adding arguments to the parser"""
     parser.add_argument('-p', '--PORT', type=int,
-            help=("Port Number to run the server. Default = %d" % DEFAULT_PORT),
-            default=DEFAULT_PORT)
-    parser.add_argument('-s', '--HOSTNAME',
-            help=("Hostname of the server. Default = %s" % DEFAULT_HOSTNAME),
-            default=DEFAULT_HOSTNAME)
-    parser.add_argument('-d', '--SLOW_RATE', type=float,
-            help=("Delay value for the server in msec. Default = %f"
-                % DEFAULT_SLOW_RATE), default=DEFAULT_SLOW_RATE)
+                        help=("Port Number to run the server. Default = %d" % DEFAULT_PORT), default=DEFAULT_PORT)
+    parser.add_argument('-s', '--HOSTNAME', help=("Hostname of the server. Default = %s"
+                                                  % DEFAULT_HOSTNAME), default=DEFAULT_HOSTNAME)
+    parser.add_argument('-d', '--SLOW_RATE', type=float, help=(
+        "Delay value for the server in msec. Default = %f" % DEFAULT_SLOW_RATE),
+                        default=DEFAULT_SLOW_RATE)
+
 
 def update_config(args):
     """ Module to update the config values with the a
@@ -233,14 +237,16 @@ def update_config(args):
     globals().update(vars(args))
     return
 
+
 def main():
-    "Program wrapper"
+    """Program wrapper"""
     parser = ArgumentParser(description='Process server parameters')
     create_arguments(parser)
     args = parser.parse_args()
+    #print "Len of args", len(args)
     update_config(args)
     start_server()
 
+
 if __name__ == "__main__":
     sys.exit(main())
-
