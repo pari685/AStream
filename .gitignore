@@ -218,3 +218,4 @@ pip-log.txt
 *.m4f
 *.mp4
 media/
+.idea/
