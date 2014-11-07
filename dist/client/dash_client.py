@@ -26,9 +26,9 @@ import httplib
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
-import logging
-import config_dash 
 
+import config_dash 
+from configure_log_file import configure_log_file
 # GLobals for arg parser with the default values
 # Not sure if this is the correct way ....
 MPD = 'http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd'
@@ -42,27 +42,7 @@ ASCII_DIGITS = '0123456789'
 FIXED_SEGMENT_SIZE = 1000
 
 
-def configure_log_file():
-    """ Module to configure the log parameters 
-    and the log file.
-    CRITICAL 50 
-    ERROR	40
-    WARNING	30
-    INFO	20
-    DEBUG	10
-    NOTSET	0
-    """
-    print "Configuring log file"
-    config_dash.LOG = logging.getLogger(config_dash.LOG_NAME)
-    config_dash.LOG_LEVEL = logging.DEBUG
-    if config_dash.LOG_FILENAME == '-':
-        handler = logging.StreamHandler(sys.stdout)
-    else:
-        handler = logging.FileHandler(filename=LOG_FILENAME)
-    config_dash.LOG.setLevel(config_dash.LOG_LEVEL)
-    log_formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
-    handler.setFormatter(log_formatter)
-    config_dash.LOG.addHandler(handler)
+
 
 
 def get_mpd(url):
