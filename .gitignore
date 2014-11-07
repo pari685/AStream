@@ -193,6 +193,7 @@ $RECYCLE.BIN/
 # Packages
 *.egg
 *.egg-info
+*.pyc
 build/
 eggs/
 parts/
@@ -213,3 +214,7 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+# Parikshit
+*.m4f
+*.mp4
+media/
