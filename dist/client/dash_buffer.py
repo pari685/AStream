@@ -52,8 +52,8 @@ class DashBuffer:
         state = state.upper()
         if state in PLAYER_STATES:
             self.playback_state_lock.acquire()
-            config_dash.LOG.info("Changing state from {} to {} at {} PBT and {} AT".format(self.playback_state, state,
-                                                                                     self.playback_timer.time()))
+            config_dash.LOG.info("Changing state from {} to {} at {} Playback time ".format(self.playback_state, state,
+                                                                                           self.playback_timer.time()))
             self.playback_state = state
             self.playback_state_lock.release()
         else:
@@ -69,6 +69,12 @@ class DashBuffer:
         #while not self.current_buffer.empty():
         while True:
             # Video stopped by the user
+            if self.playback_state == "END":
+                config_dash.LOG.info("Finished playback of the video: {} seconds of video played for {} seconds".format(
+                    self.playback_duration, time.time() - start_time))
+                self.playback_timer.pause()
+                return "STOPPED"
+
             if self.playback_state == "STOP":
                 # If video is stopped quit updating the playback time and exit player
                 config_dash.LOG.info("Player Stopped at time {}".format(
@@ -95,13 +101,17 @@ class DashBuffer:
                     buffering = True
                     interruption_start = time.time()
                 # If the size of the buffer is greater than the RE_BUFFERING_DURATION then start playback
-                if buffering and (self.buffer.qsize() * SEGMENT_DURATION >= RE_BUFFERING_DURATION):
-                    buffering = False
-                    if interruption_start:
-                        interruption = time.time() - interruption_start
-                        interruption_start = None
-                        config_dash.LOG.info("Duration of interruption = {}".format(interruption))
-                    self.set_state("PLAY")
+                else:
+                    # If the RE_BUFFERING_DURATION is greate than the remiang length of the video then do not wait
+                    remaining_playback_time = self.playback_duration - self.playback_timer.time()
+                    if ((self.buffer.qsize() * SEGMENT_DURATION >= RE_BUFFERING_DURATION) or
+                            (RE_BUFFERING_DURATION >= remaining_playback_time and self.buffer.qsize() > 0)):
+                        buffering = False
+                        if interruption_start:
+                            interruption = time.time() - interruption_start
+                            interruption_start = None
+                            config_dash.LOG.info("Duration of interruption = {}".format(interruption))
+                        self.set_state("PLAY")
 
             if self.playback_state == "INITIAL_BUFFERING":
                 if self.buffer.qsize() * SEGMENT_DURATION < INITIAL_BUFFERING_DURATION:
@@ -112,8 +122,9 @@ class DashBuffer:
                     self.set_state("PLAY")
 
             if self.playback_state == "PLAY":
-
                     # Check of the buffer has any segments
+                    if self.playback_timer.time() == self.playback_duration:
+                        self.set_state("END")
                     if self.buffer.qsize() == 0:
                         config_dash.LOG.info("Buffer is empty after {} seconds of playback".format(self.playback_timer.time()))
                         self.playback_timer.pause()
@@ -141,7 +152,8 @@ class DashBuffer:
                         if self.playback_timer.time() >= self.playback_duration:
                             config_dash.LOG.info("Completed the video playback: {} seconds".format(
                                 self.playback_duration))
-                            return 1
+                            self.playback_timer.pause()
+                            self.set_state("END")
                     else:
                         self.buffer_length_lock.acquire()
                         self.buffer_length -= int(play_segment['playback_length'])
@@ -169,6 +181,8 @@ class DashBuffer:
         config_dash.LOG.info("Starting the Player")
         self.player_thread = threading.Thread(target=self.initialize_player)
         self.player_thread.start()
+
+
 
     def stop(self):
         """Method to stop the playback"""

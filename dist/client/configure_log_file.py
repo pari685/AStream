@@ -2,7 +2,6 @@ import logging
 import config_dash
 import sys
 
-
 def configure_log_file():
     """ Module to configure the log parameters
     and the log file.
@@ -19,7 +18,7 @@ def configure_log_file():
     if config_dash.LOG_FILENAME == '-':
         handler = logging.StreamHandler(sys.stdout)
     else:
-        handler = logging.FileHandler(filename=LOG_FILENAME)
+        handler = logging.FileHandler(filename=config_dash.LOG_FILENAME)
     config_dash.LOG.setLevel(config_dash.LOG_LEVEL)
     log_formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
     handler.setFormatter(log_formatter)
