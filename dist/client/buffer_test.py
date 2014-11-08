@@ -8,7 +8,7 @@ SEGMENT = {'playback_length':4,
            'URI': "URL of the segment",
            'segment_number': 0}
 #SEGMENT_ARRIVAL_TIMES = [1, 2, 3, 4, 5]
-SEGMENT_ARRIVAL_TIMES = [1, 2, 7, 14, 19]
+SEGMENT_ARRIVAL_TIMES = [0, 2, 7, 14, 19]
 
 def run_test(segment_arrival_times=SEGMENT_ARRIVAL_TIMES):
     """

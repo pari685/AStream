@@ -17,7 +17,7 @@ class StopWatch():
             self._running = 1        
     
     def pause(self):
-        """ Stop the stopwatch, ignore if stopped. """
+        """ Stop the stopwatch, ignore if already paused."""
         if self._running:
             self._elapsedtime = time.time() - self._start
             self._running = 0
@@ -33,4 +33,4 @@ class StopWatch():
         """
         if self._running:
             self._elapsedtime = time.time() - self._start
-        return self._elapsedtime
+        return int(self._elapsedtime)
