@@ -16,7 +16,8 @@ PLAYER_STATES = ['INITIALIZED', 'INITIAL_BUFFERING', 'PLAY',
 #            'size' : 1024,
 #            'bitrate': 120
 #            'data': "<byte data>",
-#            'URI': "URL of the segment"}
+#            'URI': "URL of the segment",
+#            'segment_number': 0}
 
 
 class DashBuffer:
@@ -135,6 +136,8 @@ class DashBuffer:
                     self.buffer_lock.acquire()
                     play_segment = self.buffer.get()
                     self.buffer_lock.release()
+                    config_dash.LOG.info("Reading the segment number {} from the buffer".format(
+                        play_segment['segment_number']))
 
                     # Calculate time playback when the segment finishes
                     future = self.playback_timer.time() + play_segment['playback_length']

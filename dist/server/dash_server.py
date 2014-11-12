@@ -55,7 +55,7 @@ HTTP_VERSION = "HTTP/1.1"
 # 10 kbps when size is in bytes
 SLOW_RATE = DEFAULT_SLOW_RATE
 
-HTML_PAGES = ['index.html', 'list.html']
+HTML_PAGES = ['index.html', 'list.html', 'media/my_image.png']
 MPD_FILES = ['media/mpd/x4ukwHdACDw.mpd']
 HTML_404 = "404.html"
 

@@ -219,3 +219,5 @@ pip-log.txt
 *.mp4
 media/
 .idea/
+data/
+tools/
