@@ -7,7 +7,6 @@ LOG_FILENAME = '-'
 # Set
 LOG = None
 
-
 # For ping.py
 PING_PACKETS = 10
 ping_option_nb_pkts = PING_PACKETS
