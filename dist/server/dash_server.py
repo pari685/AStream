@@ -69,7 +69,7 @@ ACTIVE_DICT = defaultdict(dict)
 # DELAY Parameters
 # Number of the segement to insert delay
 #COUNT = 3
-SLOW_COUNT = 3
+SLOW_COUNT = 1000
 DELAY_VALUES = dict()
 
 
@@ -120,13 +120,15 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 ACTIVE_DICT[connection_id]['file_list'].append(
                     os.path.basename(request))
 
-            if ACTIVE_DICT[connection_id]['iter'].next() == 0:
-                duration = slow_write(output=self.wfile, request=request, rate=SLOW_RATE)
-                print 'Slow: Request took %f seconds' % duration
-            else:
-                duration = normal_write(self.wfile,
-                                        request)
-                print 'Normal: Request took %f seconds' % duration
+            duration = normal_write(self.wfile, request)
+            print 'Normal: Request took %f seconds' % duration
+
+            # if ACTIVE_DICT[connection_id]['iter'].next() == 0:
+            #     duration = slow_write(output=self.wfile, request=request, rate=SLOW_RATE)
+            #     print 'Slow: Request took %f seconds' % duration
+            # else:
+            #     duration = normal_write(self.wfile, request)
+            #     print 'Normal: Request took %f seconds' % duration
         else:
             self.send_error(404)
             return

@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 """
 Author:            Parikshit Juluri
-Contact:           pjuluri@mail.umkc.edu
+Contact:           pjuluri@umkc.edu
 
 Testing:
     import dash_client
@@ -9,7 +9,7 @@ Testing:
     dash_client.playback_duration(mpd_file, 'http://198.248.242.16:8005/')
 From commandline:
     python dash_client.py -m "http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd" -p "all"
-    python dash_client.py -m "http://127.0.0.1:2006/media/mpd/x4ukwHdACDw.mpd" -p "smart"
+    C:\Python27\python.exe dash_client.py -m "http://127.0.0.1:8000/media/mpd/x4ukwHdACDw.mpd" -p "basic"
 
 TODO : Better handling of the case where the file is not present on the server. (Getting stuck)
 """
@@ -45,6 +45,7 @@ DOWNLOAD_CHUNK = 1024
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     try:
+        print url
         connection = urllib2.urlopen(url, timeout=10)
     except urllib2.HTTPError, error:
         config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
@@ -107,7 +108,7 @@ def download_segment(segment_url, dash_folder):
     segment_file_handle = open(segment_filename, 'wb')
     segment_size = 0
     while True:
-        segment_data = connection.read(DOWNLOAD_CHUNK)
+        segment_data = connection.read()
         if segment_size == 0:
             break
         segment_size += len(segment_data)
@@ -189,7 +190,8 @@ def start_playback_smart(dp_object, domain, playback_type=None):
             segment_size = FIXED_SEGMENT_SIZE
             dp_list[segment_count][bitrate] = (segment_url, segment_size)
 
-    bitrates = dp_object.video.keys().sort()
+    bitrates = dp_object.video.keys()
+    bitrates.sort()
     current_bitrate = None
     average_dwn_time = 0
     segment_download_time = 0
@@ -201,8 +203,8 @@ def start_playback_smart(dp_object, domain, playback_type=None):
         else:
             if playback_type.upper() == "BASIC":
                 # current_bitrate = next_bitrate_basic(current_bitrate, bitrates)
-                current_bitrate = basic_dash(segment_number, bitrates, average_dwn_time, segment_download_time,
-                                             current_bitrate)
+                current_bitrate, avg_download_time = basic_dash(segment_number, bitrates, average_dwn_time,
+                                                                segment_download_time, current_bitrate)
             else:
                 config_dash.LOG.error("Unknown playback type: {}".format(playback_type))
         config_dash.LOG.info("Current bitrate = {}".format(str(current_bitrate)))
@@ -239,7 +241,7 @@ def start_playback_all(dp_object, domain):
     for bitrate in dp_object.audio:
         # Get the list of URL's (relative location) for the audio 
         dp_object.audio[bitrate] = read_mpd.get_url_list(bitrate, dp_object.audio[bitrate],
-                                                           dp_object.playback_duration)
+                                                         dp_object.playback_duration)
         # Create a new process to download the audio stream.
         # The domain + URL from the above list gives the 
         # complete path
@@ -256,6 +258,7 @@ def start_playback_all(dp_object, domain):
 
     for bitrate in dp_object.video:
         dp_object.video[bitrate] = read_mpd.get_url_list(bitrate, dp_object.video[bitrate],
+
                                                            dp_object.playback_duration)
         # Same as download audio
         process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.video),
@@ -332,12 +335,12 @@ def main():
         if mpd_file:
             config_dash.LOG.critical("Start ALL Parallel PLayback")
             start_playback_all(dp_object, domain)
-    #elif "smart" in PLAYBACK.lower():
+    # elif "smart" in PLAYBACK.lower():
     #    config_dash.LOG.critical("Start SMART Playback")
     #    start_playback_smart(dp_object, domain)
     elif "basic" in PLAYBACK.lower():
         config_dash.LOG.critical("Start Basic-DASH Playback")
-        start_playback_smart(dp_object, domain, type="BASIC")
+        start_playback_smart(dp_object, domain, "BASIC")
     else:
         config_dash.LOG.error("Unknown Playback parameter")
         return None
