@@ -3,21 +3,14 @@ import threading
 import time
 import config_dash
 from stop_watch import StopWatch
-from configure_log_file import configure_log_file
-if not config_dash.LOG:
-    configure_log_file()
+
 # Durations in seconds
 SEGMENT_DURATION = 4
 INITIAL_BUFFERING_DURATION = 5
 RE_BUFFERING_DURATION = 4
 PLAYER_STATES = ['INITIALIZED', 'INITIAL_BUFFERING', 'PLAY',
                  'PAUSE', 'BUFFERING', 'STOP', 'END']
-# segment = {'playback_length' : 4,
-#            'size' : 1024,
-#            'bitrate': 120
-#            'data': "<byte data>",
-#            'URI': "URL of the segment",
-#            'segment_number': 0}
+EXIT_STATES = ['STOP', 'END']
 
 
 class DashBuffer:
@@ -67,7 +60,7 @@ class DashBuffer:
         paused = False
         buffering = False
         interruption_start = None
-        #while not self.current_buffer.empty():
+
         while True:
             # Video stopped by the user
             if self.playback_state == "END":
@@ -183,9 +176,8 @@ class DashBuffer:
         self.set_state("INITIAL_BUFFERING")
         config_dash.LOG.info("Starting the Player")
         self.player_thread = threading.Thread(target=self.initialize_player)
+        self.player_thread.daemon = True
         self.player_thread.start()
-
-
 
     def stop(self):
         """Method to stop the playback"""

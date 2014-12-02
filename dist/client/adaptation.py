@@ -3,9 +3,6 @@
 import config_dash
 from configure_log_file import configure_log_file
 
-if not config_dash.LOG:
-    configure_log_file()
-
 
 def calculate_rate_index(bitrates, curr_rate):
     """ Module that finds the birate closes to the curr_rate
@@ -65,3 +62,4 @@ def basic_dash(segment_number, bitrates, average_dwn_time,
                 temp_index += 1
                 next_rate = bitrates[temp_index]
     return next_rate, updated_dwn_time
+

@@ -1,5 +1,6 @@
 import time
 
+
 class StopWatch():
     """ Implements a stop watch function
         Modified from http://code.activestate.com/recipes/124894-stopwatch-in-tkinter/
