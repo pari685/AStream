@@ -36,6 +36,7 @@ import time
 MPD = 'http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd'
 LIST = False
 PLAYBACK = 'all'
+DOWNLOAD = False
 ASCII_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 ASCII_DIGITS = '0123456789'
 # Testing
@@ -46,8 +47,9 @@ DOWNLOAD_CHUNK = 1024
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     try:
-        print url
+
         connection = urllib2.urlopen(url, timeout=10)
+
     except urllib2.HTTPError, error:
         config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
         return None
@@ -67,6 +69,7 @@ def get_mpd(url):
     mpd_file_handle = open(mpd_file, 'w')
     mpd_file_handle.write(mpd_data)
     mpd_file_handle.close()
+    config_dash.LOG.info("DOwnloaded the MPD file {}".format(mpd_file))
     return mpd_file
 
 
@@ -126,8 +129,6 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
     bandwidth, media_dict = media_info
     media = media_dict[bandwidth]
     media_start_time = timeit.default_timer()
-    for i in [media.initialization] + media.url_list:
-        print i
     for segment in [media.initialization] + media.url_list:
         start_time = timeit.default_timer()
         segment_url = urlparse.urljoin(domain, segment)
@@ -162,7 +163,7 @@ def print_representations(dp_object):
         print bandwidth
 
 
-def start_playback_smart(dp_object, domain, playback_type=None):
+def start_playback_smart(dp_object, domain, playback_type=None, download=False):
     """ Module that downloads the MPD-FIle and download
         all the representations of the Module to download
         the MPEG-DASH media.
@@ -170,7 +171,7 @@ def start_playback_smart(dp_object, domain, playback_type=None):
     # audio_done_queue = Queue()
     processes = []
     # Initialize the DASH buffer
-    dash_player = dash_buffer.DashBuffer(dp_object.playback_duration)
+    dash_player = dash_buffer.DashPlayer(dp_object.playback_duration)
     dash_player.start()
     # A folder to save the segments in
     file_identifier = id_generator()
@@ -190,8 +191,8 @@ def start_playback_smart(dp_object, domain, playback_type=None):
                                                          dp_object.playback_duration)
         media_urls = [dp_object.video[bitrate].initialization] + dp_object.video[bitrate].url_list
         for segment_count, segment_url in enumerate(media_urls):
-            segment_size = FIXED_SEGMENT_SIZE
-            dp_list[segment_count][bitrate] = (segment_url, segment_size)
+            segment_duration = dp_object.video[bitrate].segment_duration
+            dp_list[segment_count][bitrate] = (segment_url, segment_duration)
 
     bitrates = dp_object.video.keys()
     bitrates.sort()
@@ -200,6 +201,7 @@ def start_playback_smart(dp_object, domain, playback_type=None):
     segment_download_time = 0
     # TODO: get the segment sizes for the segments
     # segment_sizes = None
+    segment_files = []
     for segment_number, segment in enumerate(dp_list):
         if segment_number == 0:
             current_bitrate = bitrates[0]
@@ -211,7 +213,8 @@ def start_playback_smart(dp_object, domain, playback_type=None):
             else:
                 config_dash.LOG.error("Unknown playback type: {}".format(playback_type))
         config_dash.LOG.info("Current bitrate = {}".format(str(current_bitrate)))
-        segment_path, segment_size = dp_list[segment][current_bitrate]
+        segment_path, segment_duration = dp_list[segment][current_bitrate]
+
         segment_url = urlparse.urljoin(domain, segment_path)
         start_time = timeit.default_timer()
         try:
@@ -220,18 +223,33 @@ def start_playback_smart(dp_object, domain, playback_type=None):
             config_dash.LOG.error("Unable to save segement %s" % e)
             return None
         segment_download_time = timeit.default_timer() - start_time
-        segment_info = {'playback_length': 4,
+        segment_info = {'playback_length': segment_duration,
                         'size': segment_size,
                         'bitrate': current_bitrate,
                         'data': segment_filename,
                         'URI': segment_url,
                         'segment_number': segment_number}
         dash_player.write(segment_info)
+        segment_files.append(segment_filename)
         config_dash.LOG.info("Downloaded %s. Size = %s in %s seconds" % (
             dp_list[segment][current_bitrate][0], dp_list[segment][current_bitrate][1],
             str(segment_download_time)))
     while dash_player.playback_state not in dash_buffer.EXIT_STATES:
         time.sleep(1)
+    # if not download:
+    #     clean_files(file_identifier)
+
+
+def clean_files(folder_path):
+    """
+    :param folder_path: Folder to be deleted
+    """
+    if os.path.exists(folder_path):
+        try:
+            os.rmdir(folder_path)
+            config_dash.LOG.info("Deleting the folder {}".format(folder_path))
+        except (WindowsError, OSError), e:
+            config_dash.LOG.info("Unable to delete the folder {}. {}".format((folder_path, e)))
 
 
 def start_playback_all(dp_object, domain):
@@ -299,6 +317,9 @@ def create_arguments(parser):
     parser.add_argument('-s', '--simulate', action='store_true',
                         default=False,
                         help="Simulate without actually downloading. TODO")
+    parser.add_argument('-d', '--DOWNLOAD', action='store_true',
+                        default=False,
+                        help="Keep the video files after playback")
 
 
 def update_config(args):
@@ -318,6 +339,7 @@ def main():
     update_config(args)
     
     if not MPD:
+        # config_dash.LOG.error('Downloading MPD file %s' % MPD)
         print "ERROR: Please provide the URL to the MPD file. Try Again.."
         return None
     config_dash.LOG.info('Downloading MPD file %s' % MPD)
@@ -344,7 +366,7 @@ def main():
     #    start_playback_smart(dp_object, domain)
     elif "basic" in PLAYBACK.lower():
         config_dash.LOG.critical("Start Basic-DASH Playback")
-        start_playback_smart(dp_object, domain, "BASIC")
+        start_playback_smart(dp_object, domain, "BASIC", DOWNLOAD)
     else:
         config_dash.LOG.error("Unknown Playback parameter")
         return None

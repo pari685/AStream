@@ -13,7 +13,7 @@ PLAYER_STATES = ['INITIALIZED', 'INITIAL_BUFFERING', 'PLAY',
 EXIT_STATES = ['STOP', 'END']
 
 
-class DashBuffer:
+class DashPlayer:
     """ DASH buffer class
         TODO: Progressbar https://github.com/slok/pygressbar
     """
@@ -60,6 +60,7 @@ class DashBuffer:
         paused = False
         buffering = False
         interruption_start = None
+        print "Initialized player with video length", self.playback_duration
 
         while True:
             # Video stopped by the user
@@ -129,8 +130,8 @@ class DashBuffer:
                     self.buffer_lock.acquire()
                     play_segment = self.buffer.get()
                     self.buffer_lock.release()
-                    config_dash.LOG.info("Reading the segment number {} from the buffer".format(
-                        play_segment['segment_number']))
+                    config_dash.LOG.info("Reading the segment number {} from the buffer at playtime {}".format(
+                        play_segment['segment_number'], self.playback_timer.time()))
 
                     # Calculate time playback when the segment finishes
                     future = self.playback_timer.time() + play_segment['playback_length']
@@ -150,6 +151,7 @@ class DashBuffer:
                                 self.playback_duration))
                             self.playback_timer.pause()
                             self.set_state("END")
+                            return
                     else:
                         self.buffer_length_lock.acquire()
                         self.buffer_length -= int(play_segment['playback_length'])

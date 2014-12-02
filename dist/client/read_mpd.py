@@ -68,8 +68,9 @@ class DashPlayback:
 
 
 def get_url_list(bandwidth, media, playback_duration):
-    segment_playback = media.segment_duration / media.timescale
-    total_playback = 0
+    segment_playback = media.segment_duration
+    # Counting the init file
+    total_playback = segment_playback
     segment_count = media.start
     # Get the Base URL string
     base_url = media.base_url
@@ -77,11 +78,14 @@ def get_url_list(bandwidth, media, playback_duration):
     base_url[1] = base_url[1].replace('$', '')
     base_url[1] = base_url[1].replace('Number', '')
     base_url = ''.join(base_url)
-    while total_playback < playback_duration:
-        media.url_list.append(base_url % (segment_count))
+    while True:
+        media.url_list.append(base_url % segment_count)
         segment_count += 1
+        if total_playback > playback_duration:
+            break
         total_playback += segment_playback
     return media
+
 
 def read_mpd(mpd_file, dashplayback):
     """ Module to read the MPD file"""
@@ -119,7 +123,7 @@ def read_mpd(mpd_file, dashplayback):
                     media_type[bandwidth] = MediaObject()
                     for segment_template in representation:
                         if 'duration' in segment_template.attrib:
-                            media_type[bandwidth].segment_duration = int(segment_template.attrib['duration'])
+                            media_type[bandwidth].segment_duration = int(segment_template.attrib['duration'])/1000
                             media_type[bandwidth].base_url = segment_template.attrib['media']
                             media_type[bandwidth].start = int(segment_template.attrib['startNumber'])
                             media_type[bandwidth].timescale = int(segment_template.attrib['timescale'])
