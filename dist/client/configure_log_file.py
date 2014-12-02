@@ -2,6 +2,7 @@ import logging
 import config_dash
 import sys
 
+
 def configure_log_file():
     """ Module to configure the log parameters
     and the log file.

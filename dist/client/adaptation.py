@@ -31,15 +31,20 @@ def basic_dash(segment_number, bitrates, average_dwn_time,
     :return: next_rate : Bitrate for the next segment
     :return: updated_dwn_time: Updated average downlaod time
     """
-    average_dwn_time = float(average_dwn_time)
-    if average_dwn_time > 0:
-        updated_dwn_time = (average_dwn_time * (segment_number - 1) + segment_download_time) / segment_number
+    #average_dwn_time = float(average_dwn_time)
+    if average_dwn_time > 0 and segment_number > 0:
+        updated_dwn_time = (average_dwn_time * (segment_number + 1) + segment_download_time) / (segment_number + 1)
     else:
         updated_dwn_time = segment_download_time
+    config_dash.LOG.debug("The average download time upto segment {} is {}. Before it was {}".format(segment_number,
+                                                                                                     updated_dwn_time,
+                                                                                                     average_dwn_time))
     segment_download_time = float(segment_download_time)
     bitrates = [float(i) for i in bitrates]
+    bitrates.sort()
     try:
         sigma_download = average_dwn_time / segment_download_time
+        config_dash.LOG.debug("Sigma Download = {}/{} = {}".format(average_dwn_time, segment_download_time, sigma_download))
     except ZeroDivisionError:
         config_dash.LOG.error("Download time = 0. Unable to calculate the sigma_download")
         return curr_rate, updated_dwn_time
@@ -51,12 +56,12 @@ def basic_dash(segment_number, bitrates, average_dwn_time,
     next_rate = curr_rate
     if sigma_download < 1:
         if curr > 0:
-            if sigma_download < bitrates[curr - 1] / bitrates[curr]:
+            if sigma_download < bitrates[curr - 1]/bitrates[curr]:
                 next_rate = bitrates[0]
             else:
                 next_rate = bitrates[curr - 1]
     elif curr_rate < bitrates[-1]:
-        if sigma_download >= bitrates[curr - 1]/ bitrates[curr]:
+        if sigma_download >= bitrates[curr - 1]/bitrates[curr]:
             temp_index = curr
             while next_rate < bitrates[-1] or sigma_download < (bitrates[curr+1] / bitrates[curr]):
                 temp_index += 1

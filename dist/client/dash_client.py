@@ -169,7 +169,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False):
         the MPEG-DASH media.
     """
     # audio_done_queue = Queue()
-    processes = []
+    # processes = []
     # Initialize the DASH buffer
     dash_player = dash_buffer.DashPlayer(dp_object.playback_duration)
     dash_player.start()
@@ -208,11 +208,12 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False):
         else:
             if playback_type.upper() == "BASIC":
                 # current_bitrate = next_bitrate_basic(current_bitrate, bitrates)
-                current_bitrate, avg_download_time = basic_dash(segment_number, bitrates, average_dwn_time,
-                                                                segment_download_time, current_bitrate)
+                current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
+                                                               segment_download_time, current_bitrate)
+                config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
+                                                                                         segment_number + 1))
             else:
                 config_dash.LOG.error("Unknown playback type: {}".format(playback_type))
-        config_dash.LOG.info("Current bitrate = {}".format(str(current_bitrate)))
         segment_path, segment_duration = dp_list[segment][current_bitrate]
 
         segment_url = urlparse.urljoin(domain, segment_path)
@@ -236,8 +237,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False):
             str(segment_download_time)))
     while dash_player.playback_state not in dash_buffer.EXIT_STATES:
         time.sleep(1)
-    # if not download:
-    #     clean_files(file_identifier)
+    if not download:
+        clean_files(file_identifier)
 
 
 def clean_files(folder_path):
