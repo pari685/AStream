@@ -9,7 +9,7 @@ Testing:
     dash_client.playback_duration(mpd_file, 'http://198.248.242.16:8005/')
 From commandline:
     python dash_client.py -m "http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd" -p "all"
-    C:\Python27\python.exe dash_client.py -m "http://127.0.0.1:8000/media/mpd/x4ukwHdACDw.mpd" -p "basic"
+    C:\Python27\python.exe C:\Users\pjuluri\Documents\GitHub\AStream\dist\client\dash_client.py -m "http://127.0.0.1:8000/media/mpd/x4ukwHdACDw.mpd" -p "basic"
 
 TODO : Better handling of the case where the file is not present on the server. (Getting stuck)
 """
@@ -29,6 +29,7 @@ from adaptation import basic_dash
 import config_dash
 import dash_buffer
 from configure_log_file import configure_log_file
+import time
 
 # Globals for arg parser with the default values
 # Not sure if this is the correct way ....
@@ -125,9 +126,12 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
     bandwidth, media_dict = media_info
     media = media_dict[bandwidth]
     media_start_time = timeit.default_timer()
+    for i in [media.initialization] + media.url_list:
+        print i
     for segment in [media.initialization] + media.url_list:
         start_time = timeit.default_timer()
         segment_url = urlparse.urljoin(domain, segment)
+
         segment_size, segment_file = download_segment(segment_url, file_identifier)
         elapsed = timeit.default_timer() - start_time
         if segment_file:
@@ -140,7 +144,6 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
 def make_sure_path_exists(path):
     """ Module to make sure the path exists if not create it
     """
-    print "Trying to create the path", path
     try:
         os.makedirs(path)
     except OSError as exception:
@@ -164,7 +167,7 @@ def start_playback_smart(dp_object, domain, playback_type=None):
         all the representations of the Module to download
         the MPEG-DASH media.
     """
-    audio_done_queue = Queue()
+    # audio_done_queue = Queue()
     processes = []
     # Initialize the DASH buffer
     dash_player = dash_buffer.DashBuffer(dp_object.playback_duration)
@@ -173,14 +176,14 @@ def start_playback_smart(dp_object, domain, playback_type=None):
     file_identifier = id_generator()
     config_dash.LOG.info("The segments are stored in %s" % file_identifier)
     # Downloading all the audio segments at the same time
-    for bitrate in dp_object.audio:
-        dp_object.audio[bitrate] = read_mpd.get_url_list(bitrate, dp_object.audio[bitrate], dp_object.playback_duration)
-        process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.audio), file_identifier,
-                                                      audio_done_queue))
-        process.start()
-        processes.append(process)
+    # for bitrate in dp_object.audio:
+    #     dp_object.audio[bitrate] = read_mpd.get_url_list(bitrate,dp_object.audio[bitrate],dp_object.playback_duration)
+    #     process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.audio), file_identifier,
+    #                                                   audio_done_queue))
+    #     process.start()
+    #     processes.append(process)
     dp_list = defaultdict(defaultdict)
-    # Creating a DIctionary of all that has the URLs for each segment and different bitrates
+    # Creating a Dictionary of all that has the URLs for each segment and different bitrates
     for bitrate in dp_object.video:
         # Getting the URL list for each bitrate
         dp_object.video[bitrate] = read_mpd.get_url_list(bitrate, dp_object.video[bitrate],
@@ -227,6 +230,8 @@ def start_playback_smart(dp_object, domain, playback_type=None):
         config_dash.LOG.info("Downloaded %s. Size = %s in %s seconds" % (
             dp_list[segment][current_bitrate][0], dp_list[segment][current_bitrate][1],
             str(segment_download_time)))
+    while dash_player.playback_state not in dash_buffer.EXIT_STATES:
+        time.sleep(1)
 
 
 def start_playback_all(dp_object, domain):
@@ -268,7 +273,6 @@ def start_playback_all(dp_object, domain):
 
     for process in processes:
         process.join()
-
     count = 0
     for queue_values in iter(video_done_queue.get, None):
         bitrate, status, elapsed = queue_values
@@ -344,7 +348,6 @@ def main():
     else:
         config_dash.LOG.error("Unknown Playback parameter")
         return None
-
 
 if __name__ == "__main__":
     sys.exit(main())
