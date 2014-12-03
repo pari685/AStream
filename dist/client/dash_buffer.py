@@ -5,7 +5,7 @@ import config_dash
 from stop_watch import StopWatch
 
 # Durations in seconds
-SEGMENT_DURATION = 4
+
 INITIAL_BUFFERING_DURATION = 5
 RE_BUFFERING_DURATION = 4
 PLAYER_STATES = ['INITIALIZED', 'INITIAL_BUFFERING', 'PLAY',
@@ -17,11 +17,12 @@ class DashPlayer:
     """ DASH buffer class
         TODO: Progressbar https://github.com/slok/pygressbar
     """
-    def __init__(self, video_length):
+    def __init__(self, video_length, segment_duration):
         self.player_thread = None
         self.playback_start_time = None
         self.playback_duration = video_length
-        # Timers to keep trcak of playback time and the actual time
+        self.segment_duration = segment_duration
+        # Timers to keep track of playback time and the actual time
         self.playback_timer = StopWatch()
         self.actual_start_time = None
         # Playback State
@@ -47,7 +48,7 @@ class DashPlayer:
         if state in PLAYER_STATES:
             self.playback_state_lock.acquire()
             config_dash.LOG.info("Changing state from {} to {} at {} Playback time ".format(self.playback_state, state,
-                                                                                           self.playback_timer.time()))
+                                                                                            self.playback_timer.time()))
             self.playback_state = state
             self.playback_state_lock.release()
         else:
@@ -99,7 +100,7 @@ class DashPlayer:
                 else:
                     # If the RE_BUFFERING_DURATION is greate than the remiang length of the video then do not wait
                     remaining_playback_time = self.playback_duration - self.playback_timer.time()
-                    if ((self.buffer.qsize() * SEGMENT_DURATION >= RE_BUFFERING_DURATION) or
+                    if ((self.buffer.qsize() * self.segment_duration >= RE_BUFFERING_DURATION) or
                             (RE_BUFFERING_DURATION >= remaining_playback_time and self.buffer.qsize() > 0)):
                         buffering = False
                         if interruption_start:
@@ -109,7 +110,7 @@ class DashPlayer:
                         self.set_state("PLAY")
 
             if self.playback_state == "INITIAL_BUFFERING":
-                if self.buffer.qsize() * SEGMENT_DURATION < INITIAL_BUFFERING_DURATION:
+                if self.buffer.qsize() * self.segment_duration < INITIAL_BUFFERING_DURATION:
                     initial_wait = time.time() - start_time
                     continue
                 else:
@@ -121,7 +122,8 @@ class DashPlayer:
                     if self.playback_timer.time() == self.playback_duration:
                         self.set_state("END")
                     if self.buffer.qsize() == 0:
-                        config_dash.LOG.info("Buffer is empty after {} seconds of playback".format(self.playback_timer.time()))
+                        config_dash.LOG.info("Buffer empty after {} seconds of playback".format(
+                            self.playback_timer.time()))
                         self.playback_timer.pause()
                         self.set_state("BUFFERING")
                         continue

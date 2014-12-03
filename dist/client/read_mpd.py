@@ -74,10 +74,12 @@ class DashPlayback:
         self.video = dict()
 
 
-def get_url_list(bandwidth, media, playback_duration):
-    segment_playback = media.segment_duration
+def get_url_list(media, segment_duration,  playback_duration):
+    """
+    Moduel to get the List of URLs
+    """
     # Counting the init file
-    total_playback = segment_playback
+    total_playback = segment_duration
     segment_count = media.start
     # Get the Base URL string
     base_url = media.base_url
@@ -90,13 +92,14 @@ def get_url_list(bandwidth, media, playback_duration):
         segment_count += 1
         if total_playback > playback_duration:
             break
-        total_playback += segment_playback
+        total_playback += segment_duration
     return media
 
 
 def read_mpd(mpd_file, dashplayback):
     """ Module to read the MPD file"""
     config_dash.LOG.info("Reading the MPD file")
+    video_segment_duration = None
     try:
         tree = ET.parse(mpd_file)
     except IOError:
@@ -112,7 +115,6 @@ def read_mpd(mpd_file, dashplayback):
 
     for adaptation_set in child_period:
         if 'mimeType' in adaptation_set.attrib:
-            media_type = None
             media_found = False
             if 'audio' in adaptation_set.attrib['mimeType']:
                 media_object = dashplayback.audio
@@ -132,10 +134,12 @@ def read_mpd(mpd_file, dashplayback):
                         if "SegmentTemplate" in get_tag_name(segment_info.tag):
                             media_object[bandwidth].base_url = segment_info.attrib['media']
                             media_object[bandwidth].start = int(segment_info.attrib['startNumber'])
-                            media_object[bandwidth].timescale = int(segment_info.attrib['timescale'])
+                            media_object[bandwidth].timescale = float(segment_info.attrib['timescale'])
                             media_object[bandwidth].initialization = segment_info.attrib['initialization']
-                            media_object[bandwidth].segment_duration = int(segment_info.attrib['duration'])/1000
+
                         if 'video' in adaptation_set.attrib['mimeType']:
+                            video_segment_duration = float(segment_info.attrib['duration'])/float(
+                                segment_info.attrib['timescale'])
                             if "SegmentSize" in get_tag_name(segment_info.tag):
                                 try:
                                     segment_size = segment_info.attrib['size']
@@ -144,4 +148,4 @@ def read_mpd(mpd_file, dashplayback):
                                     continue
                                 media_object[bandwidth].segment_sizes.append(segment_size)
 
-    return dashplayback
+    return dashplayback, int(video_segment_duration)

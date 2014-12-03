@@ -1,7 +1,6 @@
 """ Adaptation algorithm
 """
 import config_dash
-from configure_log_file import configure_log_file
 
 
 def calculate_rate_index(bitrates, curr_rate):
@@ -31,7 +30,7 @@ def basic_dash(segment_number, bitrates, average_dwn_time,
     :return: next_rate : Bitrate for the next segment
     :return: updated_dwn_time: Updated average downlaod time
     """
-    #average_dwn_time = float(average_dwn_time)
+
     if average_dwn_time > 0 and segment_number > 0:
         updated_dwn_time = (average_dwn_time * (segment_number + 1) + segment_download_time) / (segment_number + 1)
     else:
