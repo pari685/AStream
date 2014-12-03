@@ -112,7 +112,7 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 del (ACTIVE_DICT[connection_id])
         elif request.split('.')[-1] in ['m4f', 'mp4']:
             print "Request for DASH Media %s" % request
-            if not connection_id in ACTIVE_DICT:
+            if connection_id not in ACTIVE_DICT:
                 ACTIVE_DICT[connection_id] = {
                     'file_list': [os.path.basename(request)],
                     'iter': itertools.cycle(delay_decision())}
@@ -120,8 +120,8 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 ACTIVE_DICT[connection_id]['file_list'].append(
                     os.path.basename(request))
 
-            duration = normal_write(self.wfile, request)
-            print 'Normal: Request took %f seconds' % duration
+            duration, file_size = normal_write(self.wfile, request)
+            print 'Normal: Request took {} seconds for size of {}'.format(duration, file_size)
 
             # if ACTIVE_DICT[connection_id]['iter'].next() == 0:
             #     duration = slow_write(output=self.wfile, request=request, rate=SLOW_RATE)
@@ -143,10 +143,17 @@ class MyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 def normal_write(output, request):
     """Function to write the video onto output stream"""
+    data = None
     try:
-        with open(request, 'r') as request_file:
+        with open(request, 'rb') as request_file:
             start_time = time.time()
-            output.write(request_file.read())
+            data_len = 0
+            while True:
+                data = request_file.read(BLOCK_SIZE)
+                output.write(data)
+                data_len += len(data)
+                if len(data) < BLOCK_SIZE:
+                    break
             now = time.time()
             output.flush()
     except IOError:
@@ -155,7 +162,7 @@ def normal_write(output, request):
             output.write(request_file.read())
             now = time.time()
             output.flush()
-    return now - start_time
+    return now - start_time, data_len
 
 
 def dir_write(output, data):
