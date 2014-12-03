@@ -18,8 +18,15 @@ MIN_BUFFER_TIME = 'minBufferTime'
 
 
 def get_tag_name(xml_element):
-    """ Module to remove the xmlns tag from the name"""
-    return xml_element[xml_element.find('}')+1:]
+    """ Module to remove the xmlns tag from the name
+        eg: '{urn:mpeg:dash:schema:mpd:2011}SegmentTemplate'
+             Return: SegmentTemplate
+    """
+    try:
+        tag_name = xml_element[xml_element.find('}')+1:]
+    except TypeError:
+        return None
+    return tag_name
 
 
 def get_playback_time(playback_duration):
@@ -98,8 +105,7 @@ def read_mpd(mpd_file, dashplayback):
     root = tree.getroot()
     if 'MPD' in get_tag_name(root.tag).upper():
         if MEDIA_PRESENTATION_DURATION in root.attrib:
-            dashplayback.playback_duration = get_playback_time(
-                    root.attrib[MEDIA_PRESENTATION_DURATION])
+            dashplayback.playback_duration = get_playback_time(root.attrib[MEDIA_PRESENTATION_DURATION])
         if MIN_BUFFER_TIME in root.attrib:
             dashplayback.min_buffer_time = get_playback_time(root.attrib[MIN_BUFFER_TIME])
     child_period = root[0]
@@ -109,23 +115,33 @@ def read_mpd(mpd_file, dashplayback):
             media_type = None
             media_found = False
             if 'audio' in adaptation_set.attrib['mimeType']:
-                media_type = dashplayback.audio
+                media_object = dashplayback.audio
                 media_found = True
                 config_dash.LOG.info("Found Audio")
             elif 'video' in adaptation_set.attrib['mimeType']:
-                media_type = dashplayback.video
+                media_object = dashplayback.video
                 media_found = True
                 config_dash.LOG.info("Found Video")
             if media_found:
                 config_dash.LOG.info("Retrieving Media")
                 for representation in adaptation_set:
                     bandwidth = int(representation.attrib['bandwidth'])
-                    media_type[bandwidth] = MediaObject()
-                    for segment_template in representation:
-                        if 'duration' in segment_template.attrib:
-                            media_type[bandwidth].segment_duration = int(segment_template.attrib['duration'])/1000
-                            media_type[bandwidth].base_url = segment_template.attrib['media']
-                            media_type[bandwidth].start = int(segment_template.attrib['startNumber'])
-                            media_type[bandwidth].timescale = int(segment_template.attrib['timescale'])
-                            media_type[bandwidth].initialization = segment_template.attrib['initialization']
+                    media_object[bandwidth] = MediaObject()
+                    media_object[bandwidth].segment_sizes = []
+                    for segment_info in representation:
+                        if "SegmentTemplate" in get_tag_name(segment_info.tag):
+                            media_object[bandwidth].base_url = segment_info.attrib['media']
+                            media_object[bandwidth].start = int(segment_info.attrib['startNumber'])
+                            media_object[bandwidth].timescale = int(segment_info.attrib['timescale'])
+                            media_object[bandwidth].initialization = segment_info.attrib['initialization']
+                            media_object[bandwidth].segment_duration = int(segment_info.attrib['duration'])/1000
+                        if 'video' in adaptation_set.attrib['mimeType']:
+                            if "SegmentSize" in get_tag_name(segment_info.tag):
+                                try:
+                                    segment_size = segment_info.attrib['size']
+                                except KeyError, e:
+                                    config_dash.LOG.error("Segment sizes not found :{}".format(e))
+                                    continue
+                                media_object[bandwidth].segment_sizes.append(segment_size)
+
     return dashplayback
