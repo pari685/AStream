@@ -22,6 +22,7 @@ import sys
 import errno
 import timeit
 import httplib
+import shutil
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
@@ -133,7 +134,7 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
         start_time = timeit.default_timer()
         segment_url = urlparse.urljoin(domain, segment)
 
-        segment_size, segment_file = download_segment(segment_url, file_identifier)
+        _, segment_file = download_segment(segment_url, file_identifier)
         elapsed = timeit.default_timer() - start_time
         if segment_file:
             done_queue.put((bandwidth, segment_url, elapsed))
@@ -271,7 +272,7 @@ def clean_files(folder_path):
         try:
             os.rmdir(folder_path)
             config_dash.LOG.info("Deleting the folder {}".format(folder_path))
-        except (WindowsError, OSError), e:
+        except (shutil.WindowsError, OSError), e:
             config_dash.LOG.info("Unable to delete the folder {}. {}".format((folder_path, e)))
 
 
