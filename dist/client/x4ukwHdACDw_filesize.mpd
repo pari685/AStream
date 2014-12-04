@@ -86,6 +86,7 @@
 		<SegmentSize id="video/2/seg-0025.m4f" size="207341"/>
 		<SegmentSize id="video/2/seg-0026.m4f" size="162040"/>
 		<SegmentSize id="video/2/seg-0027.m4f" size="11960"/>
+		
       </Representation>
       <Representation bandwidth="682492" codecs="avc1.4d401e" height="362" id="video.3" width="854">
         <SegmentTemplate duration="5005" initialization="x4ukwHdACDw/video/3/init.mp4" media="video/3/seg-$Number%04d$.m4f" startNumber="0" timescale="1000"/>
@@ -118,6 +119,7 @@
         <SegmentSize id="video/3/seg-0025.m4f" size="384941"/>
         <SegmentSize id="video/3/seg-0026.m4f" size="351660"/>
         <SegmentSize id="video/3/seg-0027.m4f" size="17187"/>
+		
       </Representation>
     </AdaptationSet>
   </Period>

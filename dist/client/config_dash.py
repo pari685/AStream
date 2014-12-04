@@ -7,6 +7,12 @@ LOG_FILENAME = '-'
 # Set
 LOG = None
 
+# Constants for the Buffer in the Weighted adaptaion scheme (in segments)
+INITIAL_BUFFER_COUNT = 2
+ALPHA_BUFFER_COUNT = 5
+BETA_BUFFER_COUNT = 10
+
+
 # For ping.py
 PING_PACKETS = 10
 ping_option_nb_pkts = PING_PACKETS

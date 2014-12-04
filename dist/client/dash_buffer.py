@@ -1,3 +1,4 @@
+from __future__ import division
 import Queue
 import threading
 import time
@@ -33,6 +34,10 @@ class DashPlayer:
         # Duration of the current buffer
         self.buffer_length = 0
         self.buffer_length_lock = threading.Lock()
+        # Buffer Constants
+        self.initial_buffer = config_dash.INITIAL_BUFFER_COUNT * segment_duration
+        self.alpha = config_dash.ALPHA_BUFFER_COUNT * segment_duration
+        self.beta = config_dash.BETA_BUFFER_COUNT * segment_duration
         # Current video buffer that holds the segment data
         self.buffer = Queue.Queue()
         self.buffer_lock = threading.Lock()
@@ -61,8 +66,7 @@ class DashPlayer:
         paused = False
         buffering = False
         interruption_start = None
-        print "Initialized player with video length", self.playback_duration
-
+        config_dash.LOG.info("Initialized player with video length {}".format(self.playback_duration))
         while True:
             # Video stopped by the user
             if self.playback_state == "END":
@@ -82,8 +86,7 @@ class DashPlayer:
             if self.playback_state == "PAUSE":
                 if not paused:
                     # do not update the playback time. Wait for the state to change
-                    config_dash.LOG.info("Player Paused after {:4.2f} seconds of playback".format(
-                        self.playback_timer.time()))
+                    config_dash.LOG.info("Player Paused after {:4.2f} seconds of playback".format(self.playback_timer.time()))
                     self.playback_timer.pause()
                     paused = True
                 continue

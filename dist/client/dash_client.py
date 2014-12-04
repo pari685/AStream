@@ -2,7 +2,6 @@
 """
 Author:            Parikshit Juluri
 Contact:           pjuluri@umkc.edu
-
 Testing:
     import dash_client
     mpd_file = <MPD_FILE>
@@ -13,6 +12,7 @@ From commandline:
 
 TODO : Better handling of the case where the file is not present on the server. (Getting stuck)
 """
+from __future__ import division
 import read_mpd
 import urlparse
 import urllib2
@@ -25,30 +25,30 @@ import httplib
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
-from adaptation import basic_dash
+from adaptation import basic_dash, weighted_dash, WeightedMean
 import config_dash
 import dash_buffer
 from configure_log_file import configure_log_file
 import time
 
-# Globals for arg parser with the default values
-# Not sure if this is the correct way ....
-MPD = 'http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd'
-LIST = False
-PLAYBACK = 'all'
-DOWNLOAD = False
+# Constants
+DEFAULT_PLAYBACK = 'BASIC'
 ASCII_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 ASCII_DIGITS = '0123456789'
-# Testing
 DOWNLOAD_CHUNK = 1024
+
+# Globals for arg parser with the default values
+# Not sure if this is the correct way ....
+MPD = None
+LIST = False
+PLAYBACK = DEFAULT_PLAYBACK
+DOWNLOAD = False
 
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
     try:
-
         connection = urllib2.urlopen(url, timeout=10)
-
     except urllib2.HTTPError, error:
         config_dash.LOG.error("Unable to download MPD file HTTP Error: %s" % error.code)
         return None
@@ -163,7 +163,7 @@ def print_representations(dp_object):
         print bandwidth
 
 
-def start_playback_smart(dp_object, domain, playback_type=None, download=False, video_segment_duration = None):
+def start_playback_smart(dp_object, domain, playback_type=None, download=False, video_segment_duration=None):
     """ Module that downloads the MPD-FIle and download
         all the representations of the Module to download
         the MPEG-DASH media.
@@ -200,10 +200,10 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     current_bitrate = None
     average_dwn_time = 0
     segment_download_time = 0
-    # TODO: get the segment sizes for the segments
-    # segment_sizes = None
     segment_files = []
+    weighted_mean_object = None
     for segment_number, segment in enumerate(dp_list):
+        config_dash.LOG.debug("Processing the segment {}".format(segment_number))
         if segment_number == 0:
             current_bitrate = bitrates[0]
         else:
@@ -213,10 +213,18 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                                                                segment_download_time, current_bitrate)
                 config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
                                                                                          segment_number + 1))
+            elif playback_type.upper() == "SMART":
+                if not weighted_mean_object:
+                    weighted_mean_object = WeightedMean()
+                    config_dash.LOG.debug("Initializing the weighted Mean object")
+                if segment_number < len(dp_list)-1:
+                    current_bitrate, delay = weighted_dash(bitrates, dash_player,
+                                                           weighted_mean_object.weighted_mean_rate,
+                                                           current_bitrate,
+                                                           get_segment_sizes(dp_object, segment_number+1))
             else:
                 config_dash.LOG.error("Unknown playback type: {}".format(playback_type))
         segment_path = dp_list[segment][current_bitrate]
-
         segment_url = urlparse.urljoin(domain, segment_path)
         start_time = timeit.default_timer()
         try:
@@ -225,6 +233,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.error("Unable to save segement %s" % e)
             return None
         segment_download_time = timeit.default_timer() - start_time
+        if playback_type.upper() == "SMART" and weighted_mean_object:
+            weighted_mean_object.update_weighted_mean(segment_size, segment_download_time)
+
         segment_info = {'playback_length': video_segment_duration,
                         'size': segment_size,
                         'bitrate': current_bitrate,
@@ -239,6 +250,17 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         time.sleep(1)
     if not download:
         clean_files(file_identifier)
+
+
+def get_segment_sizes(dp_object, segment_number):
+    """ Module to get the segment sizes for the segment_number
+    :param dp_object:
+    :param segment_number:
+    :return:
+    """
+    segment_sizes = dict([(bitrate, dp_object.video[bitrate].segment_sizes[segment_number]) for bitrate in dp_object.video])
+    config_dash.LOG.debug("The segment sizes of {} are {}".format(segment_number, segment_sizes))
+    return segment_sizes
 
 
 def clean_files(folder_path):
@@ -282,14 +304,12 @@ def start_playback_all(dp_object, domain):
 
     for bitrate in dp_object.video:
         dp_object.video[bitrate] = read_mpd.get_url_list(bitrate, dp_object.video[bitrate],
-
-                                                           dp_object.playback_duration)
+                                                         dp_object.playback_duration)
         # Same as download audio
         process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.video),
                                                       file_identifier, video_done_queue))
         process.start()
         processes.append(process)
-
     for process in processes:
         process.join()
     count = 0
@@ -297,36 +317,31 @@ def start_playback_all(dp_object, domain):
         bitrate, status, elapsed = queue_values
         if status == 'STOP':
             config_dash.LOG.critical("Completed download of %s in %f " % (bitrate, elapsed))
-
             count += 1
             if count == len(dp_object.video):
                 # If the download of all the videos is done the stop the
-                config_dash.LOG.critical("Finished download of  all video segments")
+                config_dash.LOG.critical("Finished download of all video segments")
                 break
 
 
 def create_arguments(parser):
-    """ Adding arguments to the parser"""
-    
+    """ Adding arguments to the parser """
     parser.add_argument('-m', '--MPD',                   
                         help="Url to the MPD File")
     parser.add_argument('-l', '--LIST', action='store_true',
                         help="List all the representations")
     parser.add_argument('-p', '--PLAYBACK',
-                        default="basic",
-                        help="Playback type (all, or basic)")
-    parser.add_argument('-s', '--simulate', action='store_true',
-                        default=False,
-                        help="Simulate without actually downloading. TODO")
+                        default=DEFAULT_PLAYBACK,
+                        help="Playback type (basic, smart, or all)")
+    # TODO
+    # parser.add_argument('-s', '--simulate', action='store_true',
+    #                    default=False,
+    #                    help="Simulate without actually downloading. TODO")
+
     parser.add_argument('-d', '--DOWNLOAD', action='store_true',
                         default=False,
                         help="Keep the video files after playback")
 
-
-def update_config(args):
-    """ Module to update the config values with the arguments""" 
-    globals().update(vars(args))
-    return None
 
 
 def main():
@@ -337,7 +352,7 @@ def main():
     parser = ArgumentParser(description='Process Client paameters')
     create_arguments(parser)
     args = parser.parse_args()
-    update_config(args)
+    globals().update(vars(args))
     
     if not MPD:
         # config_dash.LOG.error('Downloading MPD file %s' % MPD)
@@ -357,19 +372,18 @@ def main():
         # Print the representations and EXIT
         print_representations(dp_object)
         return None
-    
     if "all" in PLAYBACK.lower():
         if mpd_file:
             config_dash.LOG.critical("Start ALL Parallel PLayback")
             start_playback_all(dp_object, domain)
-    # elif "smart" in PLAYBACK.lower():
-    #    config_dash.LOG.critical("Start SMART Playback")
-    #    start_playback_smart(dp_object, domain)
     elif "basic" in PLAYBACK.lower():
         config_dash.LOG.critical("Start Basic-DASH Playback")
         start_playback_smart(dp_object, domain, "BASIC", DOWNLOAD, video_segment_duration)
+    elif "smart" in PLAYBACK.lower():
+        config_dash.LOG.critical("Start Smart-DASH Playback: Weighted Harmonic mean")
+        start_playback_smart(dp_object, domain, "SMART", DOWNLOAD, video_segment_duration)
     else:
-        config_dash.LOG.error("Unknown Playback parameter")
+        config_dash.LOG.error("Unknown Playback parameter {}".format(PLAYBACK))
         return None
 
 if __name__ == "__main__":

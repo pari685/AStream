@@ -1,10 +1,12 @@
-""" Module for an MOD client
+""" Module for raeding the MPD file
     Author: Parikshit Juluri
     Contact : pjuluri@umkc.edu
 
 """
+from __future__ import division
 import re
 import config_dash
+
 
 # Try to import the C implementation of ElementTree which is faster
 # In case of ImportError import the pure Python implementation
@@ -131,6 +133,7 @@ def read_mpd(mpd_file, dashplayback):
                     media_object[bandwidth] = MediaObject()
                     media_object[bandwidth].segment_sizes = []
                     for segment_info in representation:
+                        config_dash.LOG.debug("Tag info {}".format(get_tag_name(segment_info.tag)))
                         if "SegmentTemplate" in get_tag_name(segment_info.tag):
                             media_object[bandwidth].base_url = segment_info.attrib['media']
                             media_object[bandwidth].start = int(segment_info.attrib['startNumber'])
@@ -138,14 +141,18 @@ def read_mpd(mpd_file, dashplayback):
                             media_object[bandwidth].initialization = segment_info.attrib['initialization']
 
                         if 'video' in adaptation_set.attrib['mimeType']:
-                            video_segment_duration = float(segment_info.attrib['duration'])/float(
-                                segment_info.attrib['timescale'])
                             if "SegmentSize" in get_tag_name(segment_info.tag):
+                                config_dash.LOG.info("Reading the Segment Sizes")
                                 try:
                                     segment_size = segment_info.attrib['size']
                                 except KeyError, e:
-                                    config_dash.LOG.error("Segment sizes not found :{}".format(e))
+                                    config_dash.LOG.error("Error in reading Segment sizes :{}".format(e))
                                     continue
                                 media_object[bandwidth].segment_sizes.append(segment_size)
 
+                            elif "SegmentTemplate" in get_tag_name(segment_info.tag):
+                                video_segment_duration = (float(segment_info.attrib['duration'])/float(segment_info.attrib[
+                                    'timescale']))
+
     return dashplayback, int(video_segment_duration)
+
