@@ -45,6 +45,18 @@ LIST = False
 PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
 
+class DashPlayback:
+    """
+    Audio[bandwidth] : {duration, url_list}
+    Video[bandwidth] : {duration, url_list}
+    """
+    def __init__(self):
+
+        self.min_buffer_time = None
+        self.playback_duration = None
+        self.audio = dict()
+        self.video = dict()
+
 
 def get_mpd(url):
     """ Module to download the MPD from the URL and save it to file"""
@@ -344,7 +356,6 @@ def create_arguments(parser):
                         help="Keep the video files after playback")
 
 
-
 def main():
     """ Main Program wrapper"""
     # configure the log file
@@ -364,7 +375,7 @@ def main():
     # Retrieve the MPD files for the video
     mpd_file = get_mpd(MPD)
     domain = get_domain_name(MPD)
-    dp_object = read_mpd.DashPlayback()
+    dp_object = DashPlayback()
     dp_object, video_segment_duration = read_mpd.read_mpd(mpd_file, dp_object)
     config_dash.LOG.info("The DASH media has %d audio representations" % len(dp_object.audio))
     config_dash.LOG.info("The DASH media has %d video representations" % len(dp_object.video))

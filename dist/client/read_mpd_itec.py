@@ -38,15 +38,18 @@ def get_playback_time(playback_duration):
     # Get all the numbers in the string
     numbers = re.split('[PTHMS]', playback_duration)
     # remove all the empty strings
-    numbers = [value for value  in numbers if value != '']
+    numbers = [value for value in numbers if value != '']
     numbers.reverse()
     total_duration = 0
     for count, val in enumerate(numbers):
         if count == 0:
+            # Seconds
             total_duration += float(val)
         elif count == 1:
+            # Minutes to seconds
             total_duration += float(val) * 60
         elif count == 2:
+            # Hours to seconds
             total_duration += float(val) * 60 * 60
     return total_duration
 
@@ -61,19 +64,6 @@ class MediaObject(object):
         self.initialization = None
         self.base_url = None
         self.url_list = list()
-
-
-class DashPlayback:
-    """ 
-    Audio[bandwidth] : {duration, url_list}
-    Video[bandwidth] : {duration, url_list}
-    """
-    def __init__(self):
-
-        self.min_buffer_time = None
-        self.playback_duration = None
-        self.audio = dict()
-        self.video = dict()
 
 
 def get_url_list(media, segment_duration,  playback_duration):
@@ -101,7 +91,6 @@ def get_url_list(media, segment_duration,  playback_duration):
 def read_mpd(mpd_file, dashplayback):
     """ Module to read the MPD file"""
     config_dash.LOG.info("Reading the MPD file")
-    video_segment_duration = None
     try:
         tree = ET.parse(mpd_file)
     except IOError:
@@ -116,43 +105,28 @@ def read_mpd(mpd_file, dashplayback):
     child_period = root[0]
 
     for adaptation_set in child_period:
-        if 'mimeType' in adaptation_set.attrib:
-            media_found = False
-            if 'audio' in adaptation_set.attrib['mimeType']:
-                media_object = dashplayback.audio
-                media_found = True
-                config_dash.LOG.info("Found Audio")
-            elif 'video' in adaptation_set.attrib['mimeType']:
-                media_object = dashplayback.video
-                media_found = True
-                config_dash.LOG.info("Found Video")
-            if media_found:
-                config_dash.LOG.info("Retrieving Media")
-                for representation in adaptation_set:
-                    bandwidth = int(representation.attrib['bandwidth'])
-                    media_object[bandwidth] = MediaObject()
-                    media_object[bandwidth].segment_sizes = []
-                    for segment_info in representation:
-                        config_dash.LOG.debug("Tag info {}".format(get_tag_name(segment_info.tag)))
-                        if "SegmentTemplate" in get_tag_name(segment_info.tag):
-                            media_object[bandwidth].base_url = segment_info.attrib['media']
-                            media_object[bandwidth].start = int(segment_info.attrib['startNumber'])
-                            media_object[bandwidth].timescale = float(segment_info.attrib['timescale'])
-                            media_object[bandwidth].initialization = segment_info.attrib['initialization']
-
-                        if 'video' in adaptation_set.attrib['mimeType']:
-                            if "SegmentSize" in get_tag_name(segment_info.tag):
-                                config_dash.LOG.info("Reading the Segment Sizes")
-                                try:
-                                    segment_size = segment_info.attrib['size']
-                                except KeyError, e:
-                                    config_dash.LOG.error("Error in reading Segment sizes :{}".format(e))
-                                    continue
-                                media_object[bandwidth].segment_sizes.append(segment_size)
-
-                            elif "SegmentTemplate" in get_tag_name(segment_info.tag):
-                                video_segment_duration = (float(segment_info.attrib['duration'])/float(segment_info.attrib[
-                                    'timescale']))
-
-    return dashplayback, int(video_segment_duration)
-
+        playback_object = dashplayback.video
+        for media_info in adaptation_set:
+            if "SegmentTemplate" in get_tag_name(media_info.tag):
+                # All bandwidths have the same template
+                playback_object['base_url'] = media_info.attrib['media']
+                playback_object['start'] = int(media_info.attrib['startNumber'])
+                playback_object['timescale'] = float(media_info.attrib['timescale'])
+                playback_object['initialization'] = media_info.attrib['initialization']
+            if "Representation" in get_tag_name(media_info.tag):
+                bandwidth = int(media_info.attrib['bandwidth'])
+                print bandwidth
+                #return media_info
+                playback_object[bandwidth] = MediaObject()
+                playback_object[bandwidth].segment_sizes = []
+                for segment_info in media_info:
+                    print get_tag_name(segment_info.tag)
+                    if "SegmentSize" in get_tag_name(segment_info.tag):
+                        config_dash.LOG.info("Reading the Segment Sizes")
+                        try:
+                            segment_size = segment_info.attrib['size']
+                        except KeyError, e:
+                            config_dash.LOG.error("Error in reading Segment sizes :{}".format(e))
+                            continue
+                        playback_object[bandwidth].segment_sizes.append(segment_size)
+    return dashplayback
