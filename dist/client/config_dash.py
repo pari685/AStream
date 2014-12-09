@@ -1,17 +1,16 @@
-
+# The configuration file for the AStream module
 # create logger
-LOG_NAME = 'dash_log'
+LOG_NAME = 'astream_log'
 LOG_LEVEL = None
 # Set '-' to print to screen
-LOG_FILENAME = '-'
+LOG_FILENAME = 'DASH_PLAYBACK_LOG'
 # Set
 LOG = None
 
-# Constants for the Buffer in the Weighted adaptaion scheme (in segments)
+# Constants for the Buffer in the Weighted adaptation scheme (in segments)
 INITIAL_BUFFER_COUNT = 2
 ALPHA_BUFFER_COUNT = 5
 BETA_BUFFER_COUNT = 10
-
 
 # For ping.py
 PING_PACKETS = 10

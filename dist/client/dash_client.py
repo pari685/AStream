@@ -6,11 +6,11 @@ Testing:
     import dash_client
     mpd_file = <MPD_FILE>
     dash_client.playback_duration(mpd_file, 'http://198.248.242.16:8005/')
-From commandline:
-    python dash_client.py -m "http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd" -p "all"
-    C:\Python27\python.exe C:\Users\pjuluri\Documents\GitHub\AStream\dist\client\dash_client.py -m "http://127.0.0.1:8000/media/mpd/x4ukwHdACDw.mpd" -p "basic"
 
-TODO : Better handling of the case where the file is not present on the server. (Getting stuck)
+    From commandline:
+    python dash_client.py -m "http://198.248.242.16:8006/media/mpd/x4ukwHdACDw.mpd" -p "all"
+    python dash_client.py -m "http://127.0.0.1:8000/media/mpd/x4ukwHdACDw.mpd" -p "basic"
+
 """
 from __future__ import division
 import read_mpd
@@ -23,6 +23,7 @@ import errno
 import timeit
 import httplib
 import shutil
+from string import ascii_letters, digits
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
@@ -34,9 +35,8 @@ import time
 
 # Constants
 DEFAULT_PLAYBACK = 'BASIC'
-ASCII_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-ASCII_DIGITS = '0123456789'
 DOWNLOAD_CHUNK = 1024
+MPD_TYPE = "ITEC"
 
 # Globals for arg parser with the default values
 # Not sure if this is the correct way ....
@@ -44,6 +44,7 @@ MPD = None
 LIST = False
 PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
+
 
 class DashPlayback:
     """
@@ -88,7 +89,7 @@ def get_mpd(url):
 def get_bandwidth(data, duration):
     """ Module to determine the bandwidth for a segment
     download"""
-    return data*8/duration
+    return data * 8/duration
 
 
 def get_domain_name(url):
@@ -100,16 +101,15 @@ def get_domain_name(url):
     return domain
 
 
-def id_generator(size=6):
+def id_generator(id_size=6):
     """ Module to create a random string with uppercase 
         and digits.
     """
-    chars = ASCII_UPPERCASE + ASCII_DIGITS
-    return 'TEMP_' + ''.join(random.choice(chars) for _ in range(size))
+    return 'TEMP_' + ''.join(random.choice(ascii_letters+digits) for _ in range(id_size))
 
 
 def download_segment(segment_url, dash_folder):
-    """ Module to download the segment"""
+    """ Module to download the segment """
     try:
         connection = urllib2.urlopen(segment_url)
     except urllib2.HTTPError, error:
@@ -129,7 +129,6 @@ def download_segment(segment_url, dash_folder):
         segment_file_handle.write(segment_data)
         if len(segment_data) < DOWNLOAD_CHUNK:
             break
-
     connection.close()
     segment_file_handle.close()
     return segment_size, segment_filename
@@ -137,7 +136,6 @@ def download_segment(segment_url, dash_folder):
 
 def get_media_all(domain, media_info, file_identifier, done_queue):
     """ Download the media from the list of URL's in media
-    http://toastdriven.com/blog/2008/nov/11/brief-introduction-multiprocessing/
     """
     bandwidth, media_dict = media_info
     media = media_dict[bandwidth]
@@ -145,7 +143,6 @@ def get_media_all(domain, media_info, file_identifier, done_queue):
     for segment in [media.initialization] + media.url_list:
         start_time = timeit.default_timer()
         segment_url = urlparse.urljoin(domain, segment)
-
         _, segment_file = download_segment(segment_url, file_identifier)
         elapsed = timeit.default_timer() - start_time
         if segment_file:
@@ -167,11 +164,7 @@ def make_sure_path_exists(path):
 
 def print_representations(dp_object):
     """ Module to print the representations"""
-    
-    print "The DASH media has the following audio representations"
-    for bandwidth in dp_object.audio:
-        print bandwidth
-    print "The DASH media has the following video representations"
+    print "The DASH media has the following video representations/bitrates"
     for bandwidth in dp_object.video:
         print bandwidth
 
@@ -181,33 +174,23 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         all the representations of the Module to download
         the MPEG-DASH media.
     """
-    # audio_done_queue = Queue()
-    # processes = []
     # Initialize the DASH buffer
     dash_player = dash_buffer.DashPlayer(dp_object.playback_duration, video_segment_duration)
     dash_player.start()
     # A folder to save the segments in
     file_identifier = id_generator()
     config_dash.LOG.info("The segments are stored in %s" % file_identifier)
-    # Downloading all the audio segments at the same time
-    # for bitrate in dp_object.audio:
-    #     dp_object.audio[bitrate] = read_mpd.get_url_list(bitrate,dp_object.audio[bitrate],dp_object.playback_duration)
-    #     process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.audio), file_identifier,
-    #                                                   audio_done_queue))
-    #     process.start()
-    #     processes.append(process)
     dp_list = defaultdict(defaultdict)
     # Creating a Dictionary of all that has the URLs for each segment and different bitrates
     for bitrate in dp_object.video:
         # Getting the URL list for each bitrate
         dp_object.video[bitrate] = read_mpd.get_url_list(dp_object.video[bitrate], video_segment_duration,
                                                          dp_object.playback_duration)
-        config_dash.LOG.debug("PLAYback Duration = {}".format(video_segment_duration))
+        config_dash.LOG.debug("Playback Duration = {}".format(video_segment_duration))
         media_urls = [dp_object.video[bitrate].initialization] + dp_object.video[bitrate].url_list
         for segment_count, segment_url in enumerate(media_urls):
             # segment_duration = dp_object.video[bitrate].segment_duration
             dp_list[segment_count][bitrate] = segment_url
-
     bitrates = dp_object.video.keys()
     bitrates.sort()
     current_bitrate = None
@@ -221,7 +204,6 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             current_bitrate = bitrates[0]
         else:
             if playback_type.upper() == "BASIC":
-                # current_bitrate = next_bitrate_basic(current_bitrate, bitrates)
                 current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
                                                                segment_download_time, current_bitrate)
                 config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
@@ -346,14 +328,11 @@ def create_arguments(parser):
     parser.add_argument('-p', '--PLAYBACK',
                         default=DEFAULT_PLAYBACK,
                         help="Playback type (basic, smart, or all)")
-    # TODO
-    # parser.add_argument('-s', '--simulate', action='store_true',
-    #                    default=False,
-    #                    help="Simulate without actually downloading. TODO")
-
     parser.add_argument('-d', '--DOWNLOAD', action='store_true',
                         default=False,
                         help="Keep the video files after playback")
+    parser.add_argument('-t', '--MPD_TYPE', default="ITEC",
+                        help="The MPD type ITEC or other")
 
 
 def main():
@@ -376,8 +355,12 @@ def main():
     mpd_file = get_mpd(MPD)
     domain = get_domain_name(MPD)
     dp_object = DashPlayback()
-    dp_object, video_segment_duration = read_mpd.read_mpd(mpd_file, dp_object)
-    config_dash.LOG.info("The DASH media has %d audio representations" % len(dp_object.audio))
+    if MPD_TYPE == 'ITEC':
+        # Reading the ITEC type MPD file
+        dp_object, video_segment_duration = read_mpd.read_mpd(mpd_file, dp_object)
+    else:
+        # Reading the MPD file created
+        dp_object, video_segment_duration = read_mpd.read_mpd(mpd_file, dp_object)
     config_dash.LOG.info("The DASH media has %d video representations" % len(dp_object.video))
 
     if LIST:

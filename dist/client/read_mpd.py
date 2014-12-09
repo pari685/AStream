@@ -1,4 +1,4 @@
-""" Module for raeding the MPD file
+""" Module for reading the MPD file
     Author: Parikshit Juluri
     Contact : pjuluri@umkc.edu
 
@@ -27,6 +27,7 @@ def get_tag_name(xml_element):
     try:
         tag_name = xml_element[xml_element.find('}')+1:]
     except TypeError:
+        config_dash.LOG.error("Unable to retrieve the tag. ")
         return None
     return tag_name
 
@@ -78,7 +79,7 @@ class DashPlayback:
 
 def get_url_list(media, segment_duration,  playback_duration):
     """
-    Moduel to get the List of URLs
+    Module to get the List of URLs
     """
     # Counting the init file
     total_playback = segment_duration
@@ -114,7 +115,6 @@ def read_mpd(mpd_file, dashplayback):
         if MIN_BUFFER_TIME in root.attrib:
             dashplayback.min_buffer_time = get_playback_time(root.attrib[MIN_BUFFER_TIME])
     child_period = root[0]
-
     for adaptation_set in child_period:
         if 'mimeType' in adaptation_set.attrib:
             media_found = False
@@ -139,7 +139,6 @@ def read_mpd(mpd_file, dashplayback):
                             media_object[bandwidth].start = int(segment_info.attrib['startNumber'])
                             media_object[bandwidth].timescale = float(segment_info.attrib['timescale'])
                             media_object[bandwidth].initialization = segment_info.attrib['initialization']
-
                         if 'video' in adaptation_set.attrib['mimeType']:
                             if "SegmentSize" in get_tag_name(segment_info.tag):
                                 config_dash.LOG.info("Reading the Segment Sizes")
@@ -149,11 +148,9 @@ def read_mpd(mpd_file, dashplayback):
                                     config_dash.LOG.error("Error in reading Segment sizes :{}".format(e))
                                     continue
                                 media_object[bandwidth].segment_sizes.append(segment_size)
-
                             elif "SegmentTemplate" in get_tag_name(segment_info.tag):
                                 video_segment_duration = (float(segment_info.attrib['duration'])/float(
                                     segment_info.attrib['timescale']))
-
     return dashplayback, int(video_segment_duration)
 
 
@@ -183,7 +180,10 @@ def read_mpd_itec(mpd_file, dashplayback):
                 playback_object['timescale'] = float(media_info.attrib['timescale'])
                 playback_object['initialization'] = media_info.attrib['initialization']
                 video_segment_duration = float(media_info.attrib['duration'])/float(media_info.attrib['timescale'])
-            if "Representation" in get_tag_name(media_info.tag):
+                config_dash.LOG.info("SegmentTemplate: Base Url={}, start={}, timescale={}, initialization={}".format(
+                    playback_object['base_url'], playback_object['start'], playback_object['timescale'],
+                    playback_object['initialization']))
+            elif "Representation" in get_tag_name(media_info.tag):
                 bandwidth = int(media_info.attrib['bandwidth'])
                 playback_object[bandwidth] = MediaObject()
                 playback_object[bandwidth].segment_sizes = []
