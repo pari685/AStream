@@ -22,7 +22,6 @@ import sys
 import errno
 import timeit
 import httplib
-import shutil
 from string import ascii_letters, digits
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
@@ -33,10 +32,15 @@ import dash_buffer
 from configure_log_file import configure_log_file
 import time
 
+try:
+    WindowsError
+except NameError:
+    from shutil import WindowsError
+
+
 # Constants
 DEFAULT_PLAYBACK = 'BASIC'
 DOWNLOAD_CHUNK = 1024
-MPD_TYPE = "ITEC"
 
 # Globals for arg parser with the default values
 # Not sure if this is the correct way ....
@@ -113,7 +117,7 @@ def download_segment(segment_url, dash_folder):
     try:
         connection = urllib2.urlopen(segment_url)
     except urllib2.HTTPError, error:
-        config_dash.LOG.error("Unable to download DASH Segment.HTTP Error:%s " % str(error.code))
+        config_dash.LOG.error("Unable to download DASH Segment {} HTTP Error:{} ".format(segment_url, str(error.code)))
         return None
     parsed_uri = urlparse.urlparse(segment_url)
     segment_path = '{uri.path}'.format(uri=parsed_uri)
@@ -185,8 +189,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     for bitrate in dp_object.video:
         # Getting the URL list for each bitrate
         dp_object.video[bitrate] = read_mpd.get_url_list(dp_object.video[bitrate], video_segment_duration,
-                                                         dp_object.playback_duration)
+                                                         dp_object.playback_duration, bitrate)
         config_dash.LOG.debug("Playback Duration = {}".format(video_segment_duration))
+        if "$Bandwidth$" in dp_object.video[bitrate].initialization:
+            dp_object.video[bitrate].initialization = dp_object.video[bitrate].initialization.replace(
+                "$Bandwidth$", str(bitrate))
         media_urls = [dp_object.video[bitrate].initialization] + dp_object.video[bitrate].url_list
         for segment_count, segment_url in enumerate(media_urls):
             # segment_duration = dp_object.video[bitrate].segment_duration
@@ -266,8 +273,8 @@ def clean_files(folder_path):
         try:
             os.rmdir(folder_path)
             config_dash.LOG.info("Deleting the folder {}".format(folder_path))
-        except (shutil.WindowsError, OSError), e:
-            config_dash.LOG.info("Unable to delete the folder {}. {}".format((folder_path, e)))
+        except (WindowsError, OSError), e:
+            config_dash.LOG.info("Unable to delete the folder {}. {}".format(folder_path, e))
 
 
 def start_playback_all(dp_object, domain):
@@ -288,7 +295,7 @@ def start_playback_all(dp_object, domain):
         # complete path
         # The fil-identifier is a random string used to 
         # create  a temporary folder for current session
-        # Audio-done queue is used to excahnge information
+        # Audio-done queue is used to exchange information
         # between the process and the calling function.
         # 'STOP' is added to the queue to indicate the end 
         # of the download of the sesson
@@ -331,8 +338,6 @@ def create_arguments(parser):
     parser.add_argument('-d', '--DOWNLOAD', action='store_true',
                         default=False,
                         help="Keep the video files after playback")
-    parser.add_argument('-t', '--MPD_TYPE', default="ITEC",
-                        help="The MPD type ITEC or other")
 
 
 def main():
@@ -344,7 +349,6 @@ def main():
     create_arguments(parser)
     args = parser.parse_args()
     globals().update(vars(args))
-    
     if not MPD:
         # config_dash.LOG.error('Downloading MPD file %s' % MPD)
         print "ERROR: Please provide the URL to the MPD file. Try Again.."
@@ -355,14 +359,9 @@ def main():
     mpd_file = get_mpd(MPD)
     domain = get_domain_name(MPD)
     dp_object = DashPlayback()
-    if MPD_TYPE == 'ITEC':
-        # Reading the ITEC type MPD file
-        dp_object, video_segment_duration = read_mpd.read_mpd(mpd_file, dp_object)
-    else:
-        # Reading the MPD file created
-        dp_object, video_segment_duration = read_mpd.read_mpd(mpd_file, dp_object)
+    # Reading the MPD file created
+    dp_object, video_segment_duration = read_mpd.read_mpd(mpd_file, dp_object)
     config_dash.LOG.info("The DASH media has %d video representations" % len(dp_object.video))
-
     if LIST:
         # Print the representations and EXIT
         print_representations(dp_object)
