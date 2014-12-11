@@ -115,6 +115,7 @@ def id_generator(id_size=6):
 def download_segment(segment_url, dash_folder):
     """ Module to download the segment """
     try:
+        print segment_url
         connection = urllib2.urlopen(segment_url)
     except urllib2.HTTPError, error:
         config_dash.LOG.error("Unable to download DASH Segment {} HTTP Error:{} ".format(segment_url, str(error.code)))
@@ -195,7 +196,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             dp_object.video[bitrate].initialization = dp_object.video[bitrate].initialization.replace(
                 "$Bandwidth$", str(bitrate))
         media_urls = [dp_object.video[bitrate].initialization] + dp_object.video[bitrate].url_list
-        for segment_count, segment_url in enumerate(media_urls):
+        for segment_count, segment_url in enumerate(media_urls, dp_object.video[bitrate].start):
             # segment_duration = dp_object.video[bitrate].segment_duration
             dp_list[segment_count][bitrate] = segment_url
     bitrates = dp_object.video.keys()
@@ -205,9 +206,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     segment_download_time = 0
     segment_files = []
     weighted_mean_object = None
-    for segment_number, segment in enumerate(dp_list):
+    for segment_number, segment in enumerate(dp_list, dp_object.video[bitrate].start):
         config_dash.LOG.debug("Processing the segment {}".format(segment_number))
-        if segment_number == 0:
+        if segment_number == dp_object.video[bitrate].start:
             current_bitrate = bitrates[0]
         else:
             if playback_type.upper() == "BASIC":
@@ -219,11 +220,15 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 if not weighted_mean_object:
                     weighted_mean_object = WeightedMean()
                     config_dash.LOG.debug("Initializing the weighted Mean object")
-                if segment_number < len(dp_list)-1:
-                    current_bitrate, delay = weighted_dash(bitrates, dash_player,
-                                                           weighted_mean_object.weighted_mean_rate,
-                                                           current_bitrate,
-                                                           get_segment_sizes(dp_object, segment_number+1))
+                if segment_number < len(dp_list) - 1 + dp_object.video[bitrate].start:
+                    try:
+                        current_bitrate, delay = weighted_dash(bitrates, dash_player,
+                                                               weighted_mean_object.weighted_mean_rate,
+                                                               current_bitrate,
+                                                               get_segment_sizes(dp_object, segment_number+1))
+                    except IndexError:
+                        # TODO Needs Better handling
+                        pass
             else:
                 config_dash.LOG.error("Unknown playback type: {}".format(playback_type))
         segment_path = dp_list[segment][current_bitrate]

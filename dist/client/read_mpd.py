@@ -105,7 +105,6 @@ def get_url_list(media, segment_duration,  playback_duration, bitrate):
 def read_mpd(mpd_file, dashplayback):
     """ Module to read the MPD file"""
     config_dash.LOG.info("Reading the MPD file")
-    video_segment_duration = None
     try:
         tree = ET.parse(mpd_file)
     except IOError:
