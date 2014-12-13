@@ -62,7 +62,6 @@ class DashPlayer:
         else:
             config_dash.LOG.error("Unidentified state: {}".format(state))
 
-
     def initialize_player(self):
         """Method that update the current playback time"""
         start_time = time.time()
@@ -148,7 +147,7 @@ class DashPlayer:
                     self.buffer_lock.release()
                     config_dash.LOG.info("Reading the segment number {} from the buffer at playtime {}".format(
                         play_segment['segment_number'], self.playback_timer.time()))
-                    self.log_entry(action="StillPlaying")
+                    self.log_entry(action="StillPlaying", bitrate=play_segment["bitrate"])
 
                     # Calculate time playback when the segment finishes
                     future = self.playback_timer.time() + play_segment['playback_length']
@@ -190,7 +189,7 @@ class DashPlayer:
         self.buffer_length_lock.acquire()
         self.buffer_length += int(segment['playback_length'])
         self.buffer_length_lock.release()
-        self.log_entry(action="Writing")
+        self.log_entry(action="Writing", bitrate=segment['bitrate'])
 
     def start(self):
         """ Start playback"""
@@ -208,7 +207,7 @@ class DashPlayer:
         self.log_entry("Stopped")
         config_dash.LOG.info("Stopped the playback")
 
-    def log_entry(self, action):
+    def log_entry(self, action, bitrate=0):
         """Method to log the current state"""
 
         if self.buffer_log_file:
@@ -218,12 +217,12 @@ class DashPlayer:
             else:
                 log_time = 0
             if not os.path.exists(self.buffer_log_file):
-                header_row = "EpochTime CurrentPlaybackTime, CurrentBufferSize, CurrentPlaybackState, Action".split()
+                header_row = "EpochTime,CurrentPlaybackTime,CurrentBufferSize,CurrentPlaybackState,Action,Bitrate".split(",")
                 stats = (log_time, str(self.playback_timer.time()), self.buffer.qsize(),
-                         self.playback_state, action)
+                         self.playback_state, action,bitrate)
             else:
                 stats = (log_time, str(self.playback_timer.time()), self.buffer.qsize(),
-                         self.playback_state, action)
+                         self.playback_state, action,bitrate)
             str_stats = [str(i) for i in stats]
             with open(self.buffer_log_file, "ab") as log_file_handle:
                 result_writer = csv.writer(log_file_handle, delimiter=",")
@@ -231,4 +230,4 @@ class DashPlayer:
                     result_writer.writerow(header_row)
                 result_writer.writerow(str_stats)
             config_dash.LOG.info("BufferStats: EpochTime=%s,CurrentPlaybackTime=%s,CurrentBufferSize=%s,"
-                                 "CurrentPlaybackState=%s,Action=%s" % tuple(str_stats))
+                                 "CurrentPlaybackState=%s,Action=%s,Bitrate=%s" % tuple(str_stats))

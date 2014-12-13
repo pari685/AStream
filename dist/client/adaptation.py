@@ -26,6 +26,7 @@ def calculate_rate_index(bitrates, curr_rate):
 def basic_dash(segment_number, bitrates, average_dwn_time,
                segment_download_time, curr_rate):
     """
+    Module to predict the next_bitrate using the basic_dash algorithm
     :param segment_number: Current segment number
     :param bitrates: A tuple/list of available bitrates
     :param average_dwn_time: Average download time observed so far
@@ -96,6 +97,7 @@ class WeightedMean:
 
 def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_segment_sizes):
     """
+    Module to predict the next_bitrate using the weighted_dash algorithm
     :param bitrates: List of bitrates
     :param weighted_dwn_rate:
     :param curr_bitrate:
