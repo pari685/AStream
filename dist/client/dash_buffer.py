@@ -2,23 +2,21 @@ from __future__ import division
 import Queue
 import threading
 import time
+import csv
+import os
 import config_dash
 from stop_watch import StopWatch
 
 # Durations in seconds
-
-INITIAL_BUFFERING_DURATION = 5
-RE_BUFFERING_DURATION = 4
 PLAYER_STATES = ['INITIALIZED', 'INITIAL_BUFFERING', 'PLAY',
                  'PAUSE', 'BUFFERING', 'STOP', 'END']
 EXIT_STATES = ['STOP', 'END']
 
 
 class DashPlayer:
-    """ DASH buffer class
-        TODO: Progressbar https://github.com/slok/pygressbar
-    """
+    """ DASH buffer class """
     def __init__(self, video_length, segment_duration):
+        config_dash.LOG.info("Initializing the Buffer")
         self.player_thread = None
         self.playback_start_time = None
         self.playback_duration = video_length
@@ -30,22 +28,27 @@ class DashPlayer:
         self.playback_state = "INITIALIZED"
         self.playback_state_lock = threading.Lock()
         # Buffer size
-        self.max_buffer_size = video_length
+        if config_dash.MAX_BUFFER_SIZE:
+            self.max_buffer_size = config_dash.MAX_BUFFER_SIZE
+        else:
+            self.max_buffer_size = video_length
         # Duration of the current buffer
         self.buffer_length = 0
         self.buffer_length_lock = threading.Lock()
         # Buffer Constants
-        self.initial_buffer = config_dash.INITIAL_BUFFER_COUNT * segment_duration
+        self.initial_buffer = config_dash.INITIAL_BUFFERING_COUNT * segment_duration
         self.alpha = config_dash.ALPHA_BUFFER_COUNT * segment_duration
         self.beta = config_dash.BETA_BUFFER_COUNT * segment_duration
         # Current video buffer that holds the segment data
         self.buffer = Queue.Queue()
         self.buffer_lock = threading.Lock()
         self.current_segment = None
-
-    def get_state(self):
-        """ Function that returns the current state of the player"""
-        return self.playback_state
+        self.buffer_log_file = config_dash.BUFFER_LOG_FILENAME
+        config_dash.LOG.info("VideoLength={},segmentDuration={},MaxBufferSize={},InitialBuffer(secs)={},"
+                             "BufferAlph(secs)={},BufferBeta(secs)={}".format(self.playback_duration,
+                                                                              self.segment_duration,
+                                                                              self.max_buffer_size, self.initial_buffer,
+                                                                              self.alpha, self.beta))
 
     def set_state(self, state):
         """ Function to set the state of the player"""
@@ -58,6 +61,7 @@ class DashPlayer:
             self.playback_state_lock.release()
         else:
             config_dash.LOG.error("Unidentified state: {}".format(state))
+
 
     def initialize_player(self):
         """Method that update the current playback time"""
@@ -80,13 +84,15 @@ class DashPlayer:
                 config_dash.LOG.info("Player Stopped at time {}".format(
                     time.time() - start_time))
                 self.playback_timer.pause()
+                self.log_entry("Stopped")
                 return "STOPPED"
 
             # If paused by user
             if self.playback_state == "PAUSE":
                 if not paused:
                     # do not update the playback time. Wait for the state to change
-                    config_dash.LOG.info("Player Paused after {:4.2f} seconds of playback".format(self.playback_timer.time()))
+                    config_dash.LOG.info("Player Paused after {:4.2f} seconds of playback".format(
+                        self.playback_timer.time()))
                     self.playback_timer.pause()
                     paused = True
                 continue
@@ -103,32 +109,37 @@ class DashPlayer:
                 else:
                     # If the RE_BUFFERING_DURATION is greate than the remiang length of the video then do not wait
                     remaining_playback_time = self.playback_duration - self.playback_timer.time()
-                    if ((self.buffer.qsize() * self.segment_duration >= RE_BUFFERING_DURATION) or
-                            (RE_BUFFERING_DURATION >= remaining_playback_time and self.buffer.qsize() > 0)):
+                    if ((self.buffer.qsize() >= config_dash.RE_BUFFERING_COUNT) or
+                            (config_dash.RE_BUFFERING_COUNT * self.segment_duration >= remaining_playback_time and
+                            self.buffer.qsize() > 0)):
                         buffering = False
                         if interruption_start:
                             interruption = time.time() - interruption_start
                             interruption_start = None
                             config_dash.LOG.info("Duration of interruption = {}".format(interruption))
                         self.set_state("PLAY")
+                        self.log_entry("Buffering-Play")
 
             if self.playback_state == "INITIAL_BUFFERING":
-                if self.buffer.qsize() * self.segment_duration < INITIAL_BUFFERING_DURATION:
+                if self.buffer.qsize() < config_dash.INITIAL_BUFFERING_COUNT:
                     initial_wait = time.time() - start_time
                     continue
                 else:
                     config_dash.LOG.info("Initial Waiting Time = {}".format(initial_wait))
                     self.set_state("PLAY")
+                    self.log_entry("InitialBuffering-Play")
 
             if self.playback_state == "PLAY":
                     # Check of the buffer has any segments
                     if self.playback_timer.time() == self.playback_duration:
                         self.set_state("END")
+                        self.log_entry("Play-End")
                     if self.buffer.qsize() == 0:
                         config_dash.LOG.info("Buffer empty after {} seconds of playback".format(
                             self.playback_timer.time()))
                         self.playback_timer.pause()
                         self.set_state("BUFFERING")
+                        self.log_entry("Play-Buffering")
                         continue
                     # Read one the segment from the buffer
                     # Acquire Lock on the buffer and read a segment for it
@@ -137,6 +148,7 @@ class DashPlayer:
                     self.buffer_lock.release()
                     config_dash.LOG.info("Reading the segment number {} from the buffer at playtime {}".format(
                         play_segment['segment_number'], self.playback_timer.time()))
+                    self.log_entry(action="StillPlaying")
 
                     # Calculate time playback when the segment finishes
                     future = self.playback_timer.time() + play_segment['playback_length']
@@ -156,6 +168,7 @@ class DashPlayer:
                                 self.playback_duration))
                             self.playback_timer.pause()
                             self.set_state("END")
+                            self.log_entry("TheEnd")
                             return
                     else:
                         self.buffer_length_lock.acquire()
@@ -177,16 +190,45 @@ class DashPlayer:
         self.buffer_length_lock.acquire()
         self.buffer_length += int(segment['playback_length'])
         self.buffer_length_lock.release()
+        self.log_entry(action="Writing")
 
     def start(self):
         """ Start playback"""
         self.set_state("INITIAL_BUFFERING")
+        self.log_entry("Starting")
         config_dash.LOG.info("Starting the Player")
         self.player_thread = threading.Thread(target=self.initialize_player)
         self.player_thread.daemon = True
         self.player_thread.start()
+        self.log_entry(action="Starting")
 
     def stop(self):
         """Method to stop the playback"""
         self.set_state("STOP")
+        self.log_entry("Stopped")
         config_dash.LOG.info("Stopped the playback")
+
+    def log_entry(self, action):
+        """Method to log the current state"""
+
+        if self.buffer_log_file:
+            header_row = None
+            if self.actual_start_time:
+                log_time = time.time() - self.actual_start_time
+            else:
+                log_time = 0
+            if not os.path.exists(self.buffer_log_file):
+                header_row = "EpochTime CurrentPlaybackTime, CurrentBufferSize, CurrentPlaybackState, Action".split()
+                stats = (log_time, str(self.playback_timer.time()), self.buffer.qsize(),
+                         self.playback_state, action)
+            else:
+                stats = (log_time, str(self.playback_timer.time()), self.buffer.qsize(),
+                         self.playback_state, action)
+            str_stats = [str(i) for i in stats]
+            with open(self.buffer_log_file, "ab") as log_file_handle:
+                result_writer = csv.writer(log_file_handle, delimiter=",")
+                if header_row:
+                    result_writer.writerow(header_row)
+                result_writer.writerow(str_stats)
+            config_dash.LOG.info("BufferStats: EpochTime=%s,CurrentPlaybackTime=%s,CurrentBufferSize=%s,"
+                                 "CurrentPlaybackState=%s,Action=%s" % tuple(str_stats))

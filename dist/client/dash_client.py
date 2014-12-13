@@ -206,7 +206,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     segment_download_time = 0
     segment_files = []
     weighted_mean_object = None
-    for segment_number, segment in enumerate(dp_list, dp_object.video[bitrate].start):
+    current_bitrate = bitrates[0]
+    for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.debug("Processing the segment {}".format(segment_number))
         if segment_number == dp_object.video[bitrate].start:
             current_bitrate = bitrates[0]
@@ -230,7 +231,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         # TODO Needs Better handling
                         pass
             else:
-                config_dash.LOG.error("Unknown playback type: {}".format(playback_type))
+                config_dash.LOG.error("Unknown playback type:{}. Continuing with basic playback".format(playback_type))
+                current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
+                                                               segment_download_time, current_bitrate)
         segment_path = dp_list[segment][current_bitrate]
         segment_url = urlparse.urljoin(domain, segment_path)
         start_time = timeit.default_timer()
@@ -290,7 +293,7 @@ def start_playback_all(dp_object, domain):
     video_done_queue = Queue()
     processes = []
     file_identifier = id_generator(6)
-    config_dash.LOG.info("File Segements are in %s" % file_identifier)
+    config_dash.LOG.info("File Segments are in %s" % file_identifier)
     for bitrate in dp_object.audio:
         # Get the list of URL's (relative location) for the audio 
         dp_object.audio[bitrate] = read_mpd.get_url_list(bitrate, dp_object.audio[bitrate],
@@ -311,7 +314,8 @@ def start_playback_all(dp_object, domain):
 
     for bitrate in dp_object.video:
         dp_object.video[bitrate] = read_mpd.get_url_list(bitrate, dp_object.video[bitrate],
-                                                         dp_object.playback_duration)
+                                                         dp_object.playback_duration,
+                                                         dp_object.video[bitrate].segment_duration)
         # Same as download audio
         process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.video),
                                                       file_identifier, video_done_queue))
@@ -346,7 +350,7 @@ def create_arguments(parser):
 
 
 def main():
-    """ Main Program wrapper"""
+    """ Main Program wrapper """
     # configure the log file
     configure_log_file()
     # Create arguments
@@ -355,7 +359,6 @@ def main():
     args = parser.parse_args()
     globals().update(vars(args))
     if not MPD:
-        # config_dash.LOG.error('Downloading MPD file %s' % MPD)
         print "ERROR: Please provide the URL to the MPD file. Try Again.."
         return None
     config_dash.LOG.info('Downloading MPD file %s' % MPD)
