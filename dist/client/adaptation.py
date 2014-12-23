@@ -142,12 +142,12 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
     available_video = dash_player.buffer_length - dash_player.initial_buffer
     # If the buffer is less that the Initial buffer, playback remains at th lowest bitrate
     # i.e dash_buffer.current_buffer < dash_buffer.initial_buffer
-    config_dash.LOG.debug("Buffer_length = {}. Initial Buffer = {}. Available video = {}. alpha = {}. "
-                          "Beta = {} WDR = {}. Seg. size curr Rate = {}".format(dash_player.buffer_length,
-                                                                                dash_player.initial_buffer,
-                                                                                available_video, dash_player.alpha,
-                                                                                dash_player.beta, weighted_dwn_rate,
-                                                                                next_segment_sizes[curr_bitrate]))
+    config_dash.LOG.debug("Buffer_length = {} Initial Buffer = {} Available video = {}, alpha = {}. "
+                          "Beta = {} WDR = {}, curr Rate = {}".format(dash_player.buffer_length,
+                                                                      dash_player.initial_buffer,
+                                                                      available_video, dash_player.alpha,
+                                                                      dash_player.beta, weighted_dwn_rate,
+                                                                      next_segment_sizes[curr_bitrate]))
     if weighted_dwn_rate == 0 or available_video < 0:
         next_bitrate = bitrates[0]
     # If time to download the next segment with current bitrate is longer than current - initial,
@@ -165,40 +165,48 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
     elif available_video <= dash_player.alpha:
         config_dash.LOG.debug("available_video <= dash_player.alpha")
         if curr_bitrate >= max(bitrates):
+            config_dash.LOG.info("Current bitrate is MAX", curr_bitrate)
             next_bitrate = curr_bitrate
         else:
             higher_bitrate = bitrates[bitrates.index(curr_bitrate)+1]
             # Jump only one if suitable else stick to the current bitrate
-            if float(next_segment_sizes[higher_bitrate])/weighted_dwn_rate > available_video:
+            config_dash.LOG.info("next_segment_sizes[higher_bitrate] = {}, weighted_dwn_rate = {} , "
+                                 "available_video={}, ratio = {}".format(next_segment_sizes[higher_bitrate],
+                                                                             weighted_dwn_rate,
+                                                                             available_video,
+                                                                             float(next_segment_sizes[higher_bitrate])/
+                                                                             weighted_dwn_rate))
+            if float(next_segment_sizes[higher_bitrate])/weighted_dwn_rate < available_video:
                 next_bitrate = higher_bitrate
             else:
                 next_bitrate = curr_bitrate
     elif available_video <= dash_player.beta:
-        config_dash.LOG.debug("next_segment_sizes[curr_bitrate] <= dash_player.beta")
+        config_dash.LOG.debug("available_video <= dash_player.beta")
         if curr_bitrate >= max(bitrates):
             next_bitrate = curr_bitrate
         else:
             for bitrate in reversed(bitrates):
                 if bitrate >= curr_bitrate:
-                    if float(next_segment_sizes[bitrate])/weighted_dwn_rate > available_video:
+                    if float(next_segment_sizes[bitrate])/weighted_dwn_rate < available_video:
                         next_bitrate = bitrate
                         break
             if not next_bitrate:
                 next_bitrate = curr_bitrate
 
     elif available_video > dash_player.beta:
-        config_dash.LOG.debug("next_segment_sizes[curr_bitrate] > dash_player.beta")
+        config_dash.LOG.debug("available_video > dash_player.beta")
         if curr_bitrate >= max(bitrates):
             next_bitrate = curr_bitrate
         else:
             for bitrate in reversed(bitrates):
                 if bitrate >= curr_bitrate:
                     if float(next_segment_sizes[bitrate])/weighted_dwn_rate > available_video:
-                        delay = dash_player.current_buffer - dash_player.beta
                         next_bitrate = bitrate
                         break
         if not next_bitrate:
             next_bitrate = curr_bitrate
+        delay = dash_player.buffer_length - dash_player.beta
+        config_dash.LOG.info("Delay:{}".format(delay))
     else:
         next_bitrate = curr_bitrate
     config_dash.LOG.debug("The next_bitrate is assigned as {}".format(next_bitrate))
