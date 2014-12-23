@@ -12,9 +12,9 @@ if not os.path.exists(LOG_FOLDER):
 
 LOG_FILENAME = os.path.join(LOG_FOLDER, 'DASH_RUNTIME_LOG')
 # Logs related to the statistics for the video
-PLAYBACK_LOG_FILENAME = os.path.join(LOG_FOLDER, strftime('DASH_PLAYBACK_LOG_%Y-%m-%d.%H_%M_%S.csv'))
+# PLAYBACK_LOG_FILENAME = os.path.join(LOG_FOLDER, strftime('DASH_PLAYBACK_LOG_%Y-%m-%d.%H_%M_%S.csv'))
 # Buffer logs created by dash_buffer.py
-BUFFER_LOG_FILENAME = os.path.join(LOG_FOLDER,strftime('DASH_BUFFER_LOG_%Y-%m-%d.%H_%M_%S.csv'))
+BUFFER_LOG_FILENAME = os.path.join(LOG_FOLDER, strftime('DASH_BUFFER_LOG_%Y-%m-%d.%H_%M_%S.csv'))
 LOG_FILE_HANDLE = None
 # Set
 LOG = None

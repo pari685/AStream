@@ -26,7 +26,7 @@ from string import ascii_letters, digits
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
-from adaptation import basic_dash, weighted_dash, WeightedMean
+from adaptation import basic_dash, basic_dash2, weighted_dash, WeightedMean
 import config_dash
 import dash_buffer
 from configure_log_file import configure_log_file
@@ -191,7 +191,6 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         # Getting the URL list for each bitrate
         dp_object.video[bitrate] = read_mpd.get_url_list(dp_object.video[bitrate], video_segment_duration,
                                                          dp_object.playback_duration, bitrate)
-        config_dash.LOG.debug("Playback Duration = {}".format(video_segment_duration))
         if "$Bandwidth$" in dp_object.video[bitrate].initialization:
             dp_object.video[bitrate].initialization = dp_object.video[bitrate].initialization.replace(
                 "$Bandwidth$", str(bitrate))
@@ -201,20 +200,22 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             dp_list[segment_count][bitrate] = segment_url
     bitrates = dp_object.video.keys()
     bitrates.sort()
-    current_bitrate = None
     average_dwn_time = 0
     segment_download_time = 0
     segment_files = []
     weighted_mean_object = None
     current_bitrate = bitrates[0]
+    total_downloaded = 0
     for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.debug("Processing the segment {}".format(segment_number))
         if segment_number == dp_object.video[bitrate].start:
             current_bitrate = bitrates[0]
         else:
             if playback_type.upper() == "BASIC":
-                current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
-                                                               segment_download_time, current_bitrate)
+                #current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
+                #                                               segment_download_time, current_bitrate)
+                current_bitrate, average_dwn_time = basic_dash2(segment_number, bitrates, average_dwn_time,
+                                                                 segment_download_time, total_downloaded)
                 config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
                                                                                          segment_number + 1))
             elif playback_type.upper() == "SMART":
@@ -243,6 +244,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.error("Unable to save segement %s" % e)
             return None
         segment_download_time = timeit.default_timer() - start_time
+        total_downloaded += segment_size
+        config_dash.LOG.info("The tolatl downloaded = {}, segment_size = {}, segment_number = {}".format(
+            total_downloaded, segment_size, segment_number))
         if playback_type.upper() == "SMART" and weighted_mean_object:
             weighted_mean_object.update_weighted_mean(segment_size, segment_download_time)
 
@@ -352,12 +356,13 @@ def create_arguments(parser):
 def main():
     """ Main Program wrapper """
     # configure the log file
-    configure_log_file()
+
     # Create arguments
     parser = ArgumentParser(description='Process Client paameters')
     create_arguments(parser)
     args = parser.parse_args()
     globals().update(vars(args))
+    configure_log_file(playback_type=PLAYBACK.lower())
     if not MPD:
         print "ERROR: Please provide the URL to the MPD file. Try Again.."
         return None

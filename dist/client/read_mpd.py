@@ -151,4 +151,5 @@ def read_mpd(mpd_file, dashplayback):
                             elif "SegmentTemplate" in get_tag_name(segment_info.tag):
                                 video_segment_duration = (float(segment_info.attrib['duration'])/float(
                                     segment_info.attrib['timescale']))
+    config_dash.LOG.debug("Segment Playback Duration = {}".format(video_segment_duration))
     return dashplayback, int(video_segment_duration)

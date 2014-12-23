@@ -74,6 +74,36 @@ def basic_dash(segment_number, bitrates, average_dwn_time,
     return next_rate, updated_dwn_time
 
 
+def basic_dash2(segment_number, bitrates, average_dwn_time,
+                segment_download_time, total_downloaded):
+    """
+    Module to predict the next_bitrate using the basic_dash algorithm
+    :param segment_number: Current segment number
+    :param bitrates: A tuple/list of available bitrates
+    :param average_dwn_time: Average download time observed so far
+    :param segment_download_time:  Time taken to download the current segment
+    :return: next_rate : Bitrate for the next segment
+    :return: updated_dwn_time: Updated average downlaod time
+    """
+    if average_dwn_time > 0 and segment_number > 0:
+        updated_dwn_time = (average_dwn_time * (segment_number + 1) + segment_download_time) / (segment_number + 1)
+    else:
+        updated_dwn_time = segment_download_time
+    config_dash.LOG.debug("The average download time upto segment {} is {}. Before it was {}".format(segment_number,
+                                                                                                     updated_dwn_time,
+                                                                                                     average_dwn_time))
+    # Calculate the download_rate in Kbps
+    download_rate = total_downloaded * 8 / (updated_dwn_time * segment_number + 1)
+    bitrates = [float(i) for i in bitrates]
+    bitrates.sort()
+    next_rate = bitrates[0]
+    for index, bitrate in enumerate(bitrates[1:], 1):
+        if download_rate > bitrate:
+            next_rate = bitrates[index - 1]
+    config_dash.LOG.info("Download Rate = {}, next_bitrate = {}".format(download_rate, next_rate))
+    return next_rate, updated_dwn_time
+
+
 class WeightedMean:
     """ Harmonic mean.
         The weights are the sizes of the segments
@@ -118,8 +148,7 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
                                                                                 available_video, dash_player.alpha,
                                                                                 dash_player.beta, weighted_dwn_rate,
                                                                                 next_segment_sizes[curr_bitrate]))
-    if available_video < 0:
-        config_dash.LOG.debug("The next bitrate is assined as {}".format(next_bitrate))
+    if weighted_dwn_rate == 0 or available_video < 0:
         next_bitrate = bitrates[0]
     # If time to download the next segment with current bitrate is longer than current - initial,
     # switch to a lower suitable bitrate
@@ -129,26 +158,21 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
         for bitrate in reversed(bitrates):
             if bitrate < curr_bitrate:
                 if float(next_segment_sizes[bitrate])/weighted_dwn_rate < available_video:
-                    config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
                     next_bitrate = bitrate
                     break
         if not next_bitrate:
             next_bitrate = bitrates[0]
-            config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
     elif available_video <= dash_player.alpha:
         config_dash.LOG.debug("available_video <= dash_player.alpha")
         if curr_bitrate >= max(bitrates):
             next_bitrate = curr_bitrate
-            config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
         else:
             higher_bitrate = bitrates[bitrates.index(curr_bitrate)+1]
             # Jump only one if suitable else stick to the current bitrate
             if float(next_segment_sizes[higher_bitrate])/weighted_dwn_rate > available_video:
                 next_bitrate = higher_bitrate
-                config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
             else:
                 next_bitrate = curr_bitrate
-                config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
     elif available_video <= dash_player.beta:
         config_dash.LOG.debug("next_segment_sizes[curr_bitrate] <= dash_player.beta")
         if curr_bitrate >= max(bitrates):
@@ -158,7 +182,6 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
                 if bitrate >= curr_bitrate:
                     if float(next_segment_sizes[bitrate])/weighted_dwn_rate > available_video:
                         next_bitrate = bitrate
-                        config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
                         break
             if not next_bitrate:
                 next_bitrate = curr_bitrate
@@ -167,18 +190,16 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
         config_dash.LOG.debug("next_segment_sizes[curr_bitrate] > dash_player.beta")
         if curr_bitrate >= max(bitrates):
             next_bitrate = curr_bitrate
-            config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
         else:
             for bitrate in reversed(bitrates):
                 if bitrate >= curr_bitrate:
                     if float(next_segment_sizes[bitrate])/weighted_dwn_rate > available_video:
                         delay = dash_player.current_buffer - dash_player.beta
                         next_bitrate = bitrate
-                        config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
                         break
         if not next_bitrate:
             next_bitrate = curr_bitrate
     else:
-        config_dash.LOG.debug("The next bitrate is assigned as {}".format(next_bitrate))
         next_bitrate = curr_bitrate
+    config_dash.LOG.debug("The next_bitrate is assigned as {}".format(next_bitrate))
     return next_bitrate, delay
