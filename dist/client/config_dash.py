@@ -19,6 +19,9 @@ LOG_FILE_HANDLE = None
 # Set
 LOG = None
 
+# Constants for the BASIC-2 adaptation scheme
+BASIC_THRESHOLD = 10
+
 # Constants for the Buffer in the Weighted adaptation scheme (in segments)
 INITIAL_BUFFERING_COUNT = 1
 RE_BUFFERING_COUNT = 1

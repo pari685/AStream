@@ -206,7 +206,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     weighted_mean_object = None
     current_bitrate = bitrates[0]
     total_downloaded = 0
+    # Delay in terms of the number of segments
     delay = 0
+    segment_duration = 0
     for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.debug("Processing the segment {}".format(segment_number))
         if segment_number == dp_object.video[bitrate].start:
@@ -216,7 +218,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 #current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
                 #                                               segment_download_time, current_bitrate)
                 current_bitrate, average_dwn_time = basic_dash2(segment_number, bitrates, average_dwn_time,
-                                                                 segment_download_time, total_downloaded)
+                                                                segment_download_time, total_downloaded)
+                if dash_player.buffer.qsize() > config_dash.BASIC_THRESHOLD:
+                    delay = dash_player.buffer.qsize() - config_dash.BASIC_THRESHOLD
                 config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
                                                                                          segment_number + 1))
             elif playback_type.upper() == "SMART":
@@ -241,9 +245,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         start_time = timeit.default_timer()
         if delay:
             delay_start = time.time()
-            config_dash.LOG.info("SLEEPING for {}".format(delay))
-            while time.time() - delay_start < delay:
+            config_dash.LOG.info("SLEEPING for {}seconds ".format(delay*segment_duration))
+            while time.time() - delay_start < (delay * segment_duration):
                 time.sleep(1)
+            delay = 0
+            config_dash.LOG.debug("SLEPT for {}seconds ".format(time.time() - delay_start))
         try:
             segment_size, segment_filename = download_segment(segment_url, file_identifier)
         except IOError, e:
@@ -262,6 +268,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                         'data': segment_filename,
                         'URI': segment_url,
                         'segment_number': segment_number}
+        segment_duration = segment_info['playback_length']
         dash_player.write(segment_info)
         segment_files.append(segment_filename)
         config_dash.LOG.info("Downloaded %s. Size = %s in %s seconds" % (

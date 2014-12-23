@@ -172,6 +172,8 @@ class DashPlayer:
                     else:
                         self.buffer_length_lock.acquire()
                         self.buffer_length -= int(play_segment['playback_length'])
+                        config_dash.LOG.debug("Decrementing buffer_length by {}. dash_buffer = {}".format(
+                            play_segment['playback_length'], self.buffer_length))
                         self.buffer_length_lock.release()
 
     def write(self, segment):
@@ -188,6 +190,8 @@ class DashPlayer:
         self.buffer_lock.release()
         self.buffer_length_lock.acquire()
         self.buffer_length += int(segment['playback_length'])
+        config_dash.LOG.debug("Incrementing buffer_length by {}. dash_buffer = {}".format(
+            segment['playback_length'], self.buffer_length))
         self.buffer_length_lock.release()
         self.log_entry(action="Writing", bitrate=segment['bitrate'])
 

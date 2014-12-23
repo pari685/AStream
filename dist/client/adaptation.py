@@ -139,11 +139,11 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
     # Waiting time before downloading the next segment
     delay = 0
     next_bitrate = None
-    available_video = dash_player.buffer_length - dash_player.initial_buffer
+    available_video = dash_player.buffer.qsize() - dash_player.initial_buffer
     # If the buffer is less that the Initial buffer, playback remains at th lowest bitrate
     # i.e dash_buffer.current_buffer < dash_buffer.initial_buffer
     config_dash.LOG.debug("Buffer_length = {} Initial Buffer = {} Available video = {}, alpha = {}. "
-                          "Beta = {} WDR = {}, curr Rate = {}".format(dash_player.buffer_length,
+                          "Beta = {} WDR = {}, curr Rate = {}".format(dash_player.buffer.qsize(),
                                                                       dash_player.initial_buffer,
                                                                       available_video, dash_player.alpha,
                                                                       dash_player.beta, weighted_dwn_rate,
@@ -205,7 +205,7 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
                         break
         if not next_bitrate:
             next_bitrate = curr_bitrate
-        delay = dash_player.buffer_length - dash_player.beta
+        delay = dash_player.buffer.qaize() - dash_player.beta
         config_dash.LOG.info("Delay:{}".format(delay))
     else:
         next_bitrate = curr_bitrate
