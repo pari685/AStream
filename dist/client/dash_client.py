@@ -206,6 +206,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     weighted_mean_object = None
     current_bitrate = bitrates[0]
     total_downloaded = 0
+    delay = 0
     for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.debug("Processing the segment {}".format(segment_number))
         if segment_number == dp_object.video[bitrate].start:
@@ -238,6 +239,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         segment_path = dp_list[segment][current_bitrate]
         segment_url = urlparse.urljoin(domain, segment_path)
         start_time = timeit.default_timer()
+        if delay:
+            delay_start = time.time()
+            config_dash.LOG.info("SLEEPING for {}".format(delay))
+            while time.time() - delay_start < delay:
+                time.sleep(1)
         try:
             segment_size, segment_filename = download_segment(segment_url, file_identifier)
         except IOError, e:
