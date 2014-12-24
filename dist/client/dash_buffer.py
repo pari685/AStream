@@ -36,9 +36,9 @@ class DashPlayer:
         self.buffer_length = 0
         self.buffer_length_lock = threading.Lock()
         # Buffer Constants
-        self.initial_buffer = config_dash.INITIAL_BUFFERING_COUNT * segment_duration
-        self.alpha = config_dash.ALPHA_BUFFER_COUNT * segment_duration
-        self.beta = config_dash.BETA_BUFFER_COUNT * segment_duration
+        self.initial_buffer = config_dash.INITIAL_BUFFERING_COUNT
+        self.alpha = config_dash.ALPHA_BUFFER_COUNT
+        self.beta = config_dash.BETA_BUFFER_COUNT
         # Current video buffer that holds the segment data
         self.buffer = Queue.Queue()
         self.buffer_lock = threading.Lock()

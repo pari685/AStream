@@ -148,7 +148,7 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
                                                                       available_video, dash_player.alpha,
                                                                       dash_player.beta, weighted_dwn_rate,
                                                                       next_segment_sizes[curr_bitrate]))
-    if weighted_dwn_rate == 0 or available_video < 0:
+    if weighted_dwn_rate == 0 or available_video == 0:
         next_bitrate = bitrates[0]
     # If time to download the next segment with current bitrate is longer than current - initial,
     # switch to a lower suitable bitrate
@@ -205,7 +205,7 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
                         break
         if not next_bitrate:
             next_bitrate = curr_bitrate
-        delay = dash_player.buffer.qaize() - dash_player.beta
+        delay = dash_player.buffer.qsize() - dash_player.beta
         config_dash.LOG.info("Delay:{}".format(delay))
     else:
         next_bitrate = curr_bitrate
