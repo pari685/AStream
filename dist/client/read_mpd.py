@@ -124,6 +124,7 @@ def read_mpd(mpd_file, dashplayback):
         if MIN_BUFFER_TIME in root.attrib:
             dashplayback.min_buffer_time = get_playback_time(root.attrib[MIN_BUFFER_TIME])
     child_period = root[0]
+    video_segment_duration = None
     for adaptation_set in child_period:
         if 'mimeType' in adaptation_set.attrib:
             media_found = False
@@ -158,5 +159,5 @@ def read_mpd(mpd_file, dashplayback):
                             elif "SegmentTemplate" in get_tag_name(segment_info.tag):
                                 video_segment_duration = (float(segment_info.attrib['duration'])/float(
                                     segment_info.attrib['timescale']))
-    config_dash.LOG.debug("Segment Playback Duration = {}".format(video_segment_duration))
+                                config_dash.LOG.debug("Segment Playback Duration = {}".format(video_segment_duration))
     return dashplayback, int(video_segment_duration)
