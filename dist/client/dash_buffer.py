@@ -178,8 +178,8 @@ class DashPlayer:
                         self.buffer_length_lock.release()
                     if int(play_segment['segment_number']) >= self.segment_limit:
                         self.set_state("STOP")
-                        config_dash.LOG.info("Stooped playback after segment {} at playtime {}",
-                                             play_segment['segment_number'], self.playback_duration )
+                        config_dash.LOG.info("Stopped playback after segment {} at playtime {}".format(
+                            play_segment['segment_number'], self.playback_duration))
 
     def write(self, segment):
         """ write segment to the buffer.
