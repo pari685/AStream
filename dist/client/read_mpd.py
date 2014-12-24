@@ -7,7 +7,14 @@ from __future__ import division
 import re
 import config_dash
 
-
+# Dictionary to convert size to bits
+SIZE_DICT = {'bits':   1,
+             'Kbits':  1000,
+             'Mbits':  1000000,
+             'bytes':  8,
+             'Kytes':  8000,
+             'Mbytes': 8000000,
+             }
 # Try to import the C implementation of ElementTree which is faster
 # In case of ImportError import the pure Python implementation
 try:
@@ -143,7 +150,7 @@ def read_mpd(mpd_file, dashplayback):
                         if 'video' in adaptation_set.attrib['mimeType']:
                             if "SegmentSize" in get_tag_name(segment_info.tag):
                                 try:
-                                    segment_size = segment_info.attrib['size']
+                                    segment_size = segment_info.attrib['size'] * SIZE_DICT[segment_info.attrib['scale']]
                                 except KeyError, e:
                                     config_dash.LOG.error("Error in reading Segment sizes :{}".format(e))
                                     continue
