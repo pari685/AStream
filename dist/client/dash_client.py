@@ -48,6 +48,7 @@ MPD = None
 LIST = False
 PLAYBACK = DEFAULT_PLAYBACK
 DOWNLOAD = False
+SEGMENT_LIMIT = None
 
 
 class DashPlayback:
@@ -211,12 +212,17 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     segment_duration = 0
     for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.debug("Processing the segment {}".format(segment_number))
+        if SEGMENT_LIMIT:
+            if not dash_player.segment_limit:
+                dash_player.segment_limit = int(SEGMENT_LIMIT)
+            if segment_number > int(SEGMENT_LIMIT):
+                config_dash.LOG.info("Segment limit reached")
+                break
+
         if segment_number == dp_object.video[bitrate].start:
             current_bitrate = bitrates[0]
         else:
             if playback_type.upper() == "BASIC":
-                #current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
-                #                                               segment_download_time, current_bitrate)
                 current_bitrate, average_dwn_time = basic_dash2(segment_number, bitrates, average_dwn_time,
                                                                 segment_download_time, total_downloaded)
                 if dash_player.buffer.qsize() > config_dash.BASIC_THRESHOLD:
@@ -311,23 +317,23 @@ def start_playback_all(dp_object, domain):
     processes = []
     file_identifier = id_generator(6)
     config_dash.LOG.info("File Segments are in %s" % file_identifier)
-    for bitrate in dp_object.audio:
-        # Get the list of URL's (relative location) for the audio 
-        dp_object.audio[bitrate] = read_mpd.get_url_list(bitrate, dp_object.audio[bitrate],
-                                                         dp_object.playback_duration)
-        # Create a new process to download the audio stream.
-        # The domain + URL from the above list gives the 
-        # complete path
-        # The fil-identifier is a random string used to 
-        # create  a temporary folder for current session
-        # Audio-done queue is used to exchange information
-        # between the process and the calling function.
-        # 'STOP' is added to the queue to indicate the end 
-        # of the download of the sesson
-        process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.audio),
-                                                      file_identifier, audio_done_queue))
-        process.start()
-        processes.append(process)
+    # for bitrate in dp_object.audio:
+    #     # Get the list of URL's (relative location) for the audio
+    #     dp_object.audio[bitrate] = read_mpd.get_url_list(bitrate, dp_object.audio[bitrate],
+    #                                                      dp_object.playback_duration)
+    #     # Create a new process to download the audio stream.
+    #     # The domain + URL from the above list gives the
+    #     # complete path
+    #     # The fil-identifier is a random string used to
+    #     # create  a temporary folder for current session
+    #     # Audio-done queue is used to exchange information
+    #     # between the process and the calling function.
+    #     # 'STOP' is added to the queue to indicate the end
+    #     # of the download of the sesson
+    #     process = Process(target=get_media_all, args=(domain, (bitrate, dp_object.audio),
+    #                                                   file_identifier, audio_done_queue))
+    #     process.start()
+    #     processes.append(process)
 
     for bitrate in dp_object.video:
         dp_object.video[bitrate] = read_mpd.get_url_list(bitrate, dp_object.video[bitrate],
@@ -361,6 +367,9 @@ def create_arguments(parser):
     parser.add_argument('-p', '--PLAYBACK',
                         default=DEFAULT_PLAYBACK,
                         help="Playback type (basic, smart, or all)")
+    parser.add_argument('-n', '--SEGMENT_LIMIT',
+                        default=SEGMENT_LIMIT,
+                        help="The Segment number limit")
     parser.add_argument('-d', '--DOWNLOAD', action='store_true',
                         default=False,
                         help="Keep the video files after playback")

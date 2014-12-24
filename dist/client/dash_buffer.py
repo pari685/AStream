@@ -39,6 +39,7 @@ class DashPlayer:
         self.initial_buffer = config_dash.INITIAL_BUFFERING_COUNT
         self.alpha = config_dash.ALPHA_BUFFER_COUNT
         self.beta = config_dash.BETA_BUFFER_COUNT
+        self.segment_limit = None
         # Current video buffer that holds the segment data
         self.buffer = Queue.Queue()
         self.buffer_lock = threading.Lock()
@@ -175,6 +176,10 @@ class DashPlayer:
                         config_dash.LOG.debug("Decrementing buffer_length by {}. dash_buffer = {}".format(
                             play_segment['playback_length'], self.buffer_length))
                         self.buffer_length_lock.release()
+                    if int(play_segment['segment_number']) >= self.segment_limit:
+                        self.set_state("STOP")
+                        config_dash.LOG.info("Stooped playback after segment {} at playtime {}",
+                                             play_segment['segment_number'], self.playback_duration )
 
     def write(self, segment):
         """ write segment to the buffer.
