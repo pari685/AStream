@@ -151,7 +151,8 @@ def read_mpd(mpd_file, dashplayback):
                         if 'video' in adaptation_set.attrib['mimeType']:
                             if "SegmentSize" in get_tag_name(segment_info.tag):
                                 try:
-                                    segment_size = segment_info.attrib['size'] * SIZE_DICT[segment_info.attrib['scale']]
+                                    segment_size = int(segment_info.attrib['size']) * int(
+                                        SIZE_DICT[segment_info.attrib['scale']])
                                 except KeyError, e:
                                     config_dash.LOG.error("Error in reading Segment sizes :{}".format(e))
                                     continue
