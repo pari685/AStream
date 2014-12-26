@@ -302,10 +302,14 @@ def clean_files(folder_path):
     """
     if os.path.exists(folder_path):
         try:
+            for video_file in os.listdir(folder_path):
+                file_path = os.path.join(folder_path, video_file)
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
             os.rmdir(folder_path)
-            config_dash.LOG.info("Deleting the folder {}".format(folder_path))
         except (WindowsError, OSError), e:
             config_dash.LOG.info("Unable to delete the folder {}. {}".format(folder_path, e))
+        config_dash.LOG.info("Deleted the folder '{}' and its contents".format(folder_path))
 
 
 def start_playback_all(dp_object, domain):
