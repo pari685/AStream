@@ -86,7 +86,7 @@ def basic_dash2(segment_number, bitrates, average_dwn_time,
     :return: updated_dwn_time: Updated average downlaod time
     """
     if average_dwn_time > 0 and segment_number > 0:
-        updated_dwn_time = (average_dwn_time * (segment_number + 1) + segment_download_time) / (segment_number + 1)
+        updated_dwn_time = (average_dwn_time * segment_number + segment_download_time) / (segment_number + 1)
     else:
         updated_dwn_time = segment_download_time
     config_dash.LOG.debug("The average download time upto segment {} is {}. Before it was {}".format(segment_number,
