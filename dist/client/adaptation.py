@@ -93,13 +93,16 @@ def basic_dash2(segment_number, bitrates, average_dwn_time,
                                                                                                      updated_dwn_time,
                                                                                                      average_dwn_time))
     # Calculate the download_rate in Kbps
-    download_rate = total_downloaded * 8 / (updated_dwn_time * segment_number + 1)
+    download_rate = total_downloaded * 8 / (updated_dwn_time * (segment_number + 1))
     bitrates = [float(i) for i in bitrates]
     bitrates.sort()
     next_rate = bitrates[0]
     for index, bitrate in enumerate(bitrates[1:], 1):
         if download_rate > bitrate:
-            next_rate = bitrates[index - 1]
+            if download_rate > bitrate * config_dash.BASIC_UPPER_THRESHOLD:
+                next_rate = bitrates[index]
+            else:
+                next_rate = bitrates[index - 1]
     config_dash.LOG.info("Download Rate = {}, next_bitrate = {}".format(download_rate, next_rate))
     return next_rate, updated_dwn_time
 

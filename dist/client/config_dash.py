@@ -21,6 +21,7 @@ LOG = None
 
 # Constants for the BASIC-2 adaptation scheme
 BASIC_THRESHOLD = 10
+BASIC_UPPER_THRESHOLD = 1.2
 
 # Constants for the Buffer in the Weighted adaptation scheme (in segments)
 INITIAL_BUFFERING_COUNT = 1
