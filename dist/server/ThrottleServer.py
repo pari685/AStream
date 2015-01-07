@@ -1,23 +1,36 @@
-from mod_python import apache
-import time
-import math
-
 """
 Apache2 Configuration:
 http://www.cyberciti.biz/faq/ubuntu-mod_python-apache-tutorial/
 
 """
+
+from mod_python import apache
+import time
+import math
+
 test = 1
 start_time = None
 transfer_frequency = 30
 log_file = "/var/www/py/speed_log.txt"
+log_handle = open(log_file, "r")
+speed_values = log_handle.readlines()
+speed_values = [int(i.strip()) for i in speed_values]
+speed_position = 0
 # shmem_file = "/tmp/httpthrottle.run"
 # shmem_fd = open(shmem_file, "")
 
 
 def get_next_rate():
     """ Return the bitrates in bytes per second"""
-    return 100
+    if log_file:
+        log_handle.seek(0)
+        global speed_position
+        global speed_values
+        for line_number, speed in enumerate(speed_values):
+            if line_number == speed_position:
+                speed_position += 1
+                return speed
+    return 10000
 
 
 def handler(req):
