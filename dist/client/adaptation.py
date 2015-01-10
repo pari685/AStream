@@ -170,7 +170,7 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
     elif available_video_segments <= dash_player.alpha:
         config_dash.LOG.debug("available_video <= dash_player.alpha")
         if curr_bitrate >= max(bitrates):
-            config_dash.LOG.info("Current bitrate is MAX", curr_bitrate)
+            config_dash.LOG.info("Current bitrate is MAX = {}".format(curr_bitrate))
             next_bitrate = curr_bitrate
         else:
             higher_bitrate = bitrates[bitrates.index(curr_bitrate)+1]
