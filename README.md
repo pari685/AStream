@@ -1,4 +1,4 @@
-Adaptive Streaming
+AStream: A rate adaptaion model for DASH
 ==================
 Adaptive Streaming
 
