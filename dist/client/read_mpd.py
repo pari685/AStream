@@ -9,11 +9,11 @@ import config_dash
 
 # Dictionary to convert size to bits
 SIZE_DICT = {'bits':   1,
-             'Kbits':  1000,
-             'Mbits':  1000000,
+             'Kbits':  1024,
+             'Mbits':  1024*1024,
              'bytes':  8,
-             'Kytes':  8000,
-             'Mbytes': 8000000,
+             'KB':  1024*8,
+             'MB': 1024*1024*8,
              }
 # Try to import the C implementation of ElementTree which is faster
 # In case of ImportError import the pure Python implementation
@@ -130,7 +130,7 @@ def read_mpd(mpd_file, dashplayback):
             media_found = False
             if 'audio' in adaptation_set.attrib['mimeType']:
                 media_object = dashplayback.audio
-                media_found = True
+                media_found = False
                 config_dash.LOG.info("Found Audio")
             elif 'video' in adaptation_set.attrib['mimeType']:
                 media_object = dashplayback.video
