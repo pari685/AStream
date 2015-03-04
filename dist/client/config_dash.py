@@ -31,6 +31,16 @@ BETA_BUFFER_COUNT = 10
 # Set the size of the buffer in terms of segments. Set to unlimited if 0 or None
 MAX_BUFFER_SIZE = None
 
+# ---------------------------------------------------
+# NETFLIX ADAPTATION
+# ---------------------------------------------------
+# Constants for the Netflix Buffering scheme adaptation/netflix_buffer.py
+# Constants is terms of buffer occupancy percentage
+NETFLIX_RESERVOIR = 0.1
+NETFLIX_CUSHION = 0.9
+# Buffer Size in Number of segments 240 seconds/4
+NETFLIX_BUFFER_SIZE = 60
+
 # For ping.py
 PING_PACKETS = 10
 ping_option_nb_pkts = PING_PACKETS

@@ -7,10 +7,8 @@ import config_dash
 from configure_log_file import configure_log_file
 
 """Module to generate the RTT times of a ping
-
    This module provides two functions that enable us to get the ping statistics
    of an IP address on any system(Linux, Windows, Mac)
-
 
 """
 

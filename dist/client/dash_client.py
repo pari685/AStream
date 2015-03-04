@@ -26,7 +26,8 @@ from string import ascii_letters, digits
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
-from adaptation import basic_dash, basic_dash2, weighted_dash, WeightedMean
+from adaptation import basic_dash, basic_dash2, weighted_dash
+from adaptation.adaptation import WeightedMean
 import config_dash
 import dash_buffer
 from configure_log_file import configure_log_file

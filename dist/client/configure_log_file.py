@@ -10,7 +10,7 @@ def configure_log_file(playback_type="", log_file=config_dash.LOG_FILENAME):
     Log Levels: CRITICAL:50, ERROR:40, WARNING:30, INFO:20, DEBUG:10, NOTSET	0
     """
     config_dash.LOG = logging.getLogger(config_dash.LOG_NAME)
-    config_dash.LOG_LEVEL = logging.DEBUG
+    config_dash.LOG_LEVEL = logging.INFO
     config_dash.LOG.setLevel(config_dash.LOG_LEVEL)
     log_formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
     # Add the handler to print to the screen
