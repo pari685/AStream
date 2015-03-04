@@ -2,6 +2,7 @@ __author__ = 'pjuluri'
 
 from .. import config_dash
 
+
 def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_segment_sizes):
     """
     Module to predict the next_bitrate using the weighted_dash algorithm
@@ -53,8 +54,7 @@ def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_s
                                  "available_video={} seconds, ratio = {}".format(next_segment_sizes[higher_bitrate],
                                                                                  weighted_dwn_rate,
                                                                                  available_video_duration,
-                                                                                 float(next_segment_sizes[
-                                                                                    higher_bitrate])/weighted_dwn_rate))
+                                                                                float(next_segment_sizes[higher_bitrate])/weighted_dwn_rate))
             if float(next_segment_sizes[higher_bitrate])/weighted_dwn_rate < available_video_duration:
                 next_bitrate = higher_bitrate
             else:
