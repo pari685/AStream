@@ -26,7 +26,7 @@ from string import ascii_letters, digits
 from argparse import ArgumentParser
 from multiprocessing import Process, Queue
 from collections import defaultdict
-from adaptation import basic_dash, basic_dash2, weighted_dash
+from adaptation import basic_dash, basic_dash2, weighted_dash, netflix_dash
 from adaptation.adaptation import WeightedMean
 import config_dash
 import dash_buffer
@@ -180,6 +180,17 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     """ Module that downloads the MPD-FIle and download
         all the representations of the Module to download
         the MPEG-DASH media.
+        Example: start_playback_smart(dp_object, domain, "SMART", DOWNLOAD, video_segment_duration)
+
+        :param dp_object:       The DASH-playback object
+        :param domain:          The domain name of the server (The segment URLS are domain + relative_address)
+        :param playback_type:   The type of playback
+                                1. 'BASIC' - The basic adapataion scheme
+                                2. 'SARA' - Segment Aware Rate Adaptation
+                                3. 'NETFLIX' - Buffer based adaptation used by Netflix
+        :param download: Set to True if the segments are to be stored locally (Boolean). Default False
+        :param video_segment_duration: Playback duratoin of each segment
+        :return:
     """
     # Initialize the DASH buffer
     dash_player = dash_buffer.DashPlayer(dp_object.playback_duration, video_segment_duration)
@@ -203,7 +214,6 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     bitrates = dp_object.video.keys()
     bitrates.sort()
     average_dwn_time = 0
-    segment_download_time = 0
     segment_files = []
     weighted_mean_object = None
     current_bitrate = bitrates[0]
@@ -211,6 +221,11 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     # Delay in terms of the number of segments
     delay = 0
     segment_duration = 0
+    segment_size = segment_download_time = None
+    # Netflix Variables
+    average_segment_sizes = netflix_rate_map = None
+    netflix_state = "INITIAL"
+    # Start playback of all the segments
     for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.debug("Processing the segment {}".format(segment_number))
         if SEGMENT_LIMIT:
@@ -219,13 +234,12 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             if segment_number > int(SEGMENT_LIMIT):
                 config_dash.LOG.info("Segment limit reached")
                 break
-
         if segment_number == dp_object.video[bitrate].start:
             current_bitrate = bitrates[0]
         else:
             if playback_type.upper() == "BASIC":
-                current_bitrate, average_dwn_time = basic_dash2(segment_number, bitrates, average_dwn_time,
-                                                                segment_download_time, total_downloaded)
+                current_bitrate, average_dwn_time = basic_dash2.basic_dash2(segment_number, bitrates, average_dwn_time,
+                                                                            segment_download_time, total_downloaded)
                 if dash_player.buffer.qsize() > config_dash.BASIC_THRESHOLD:
                     delay = dash_player.buffer.qsize() - config_dash.BASIC_THRESHOLD
                 config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
@@ -234,19 +248,39 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 if not weighted_mean_object:
                     weighted_mean_object = WeightedMean()
                     config_dash.LOG.debug("Initializing the weighted Mean object")
+                # Checking the segment number is in acceptable range
                 if segment_number < len(dp_list) - 1 + dp_object.video[bitrate].start:
                     try:
-                        current_bitrate, delay = weighted_dash(bitrates, dash_player,
-                                                               weighted_mean_object.weighted_mean_rate,
-                                                               current_bitrate,
-                                                               get_segment_sizes(dp_object, segment_number+1))
-                    except IndexError:
-                        # TODO Needs Better handling
-                        pass
+                        current_bitrate, delay = weighted_dash.weighted_dash(bitrates, dash_player,
+                                                                             weighted_mean_object.weighted_mean_rate,
+                                                                             current_bitrate,
+                                                                             get_segment_sizes(dp_object,
+                                                                                               segment_number+1))
+                    except IndexError, e:
+                        config_dash.LOG.error(e)
+
+            elif playback_type.type.upper() == "NETFLIX":
+                # Calculate the average segment sizes for each bitrate
+                if not average_segment_sizes:
+                    average_segment_sizes = get_average_segment_sizes(dp_object)
+                if segment_number < len(dp_list) - 1 + dp_object.video[bitrate].start:
+                    try:
+                        if segment_size and segment_download_time:
+                            segment_download_rate = segment_size / segment_download_time
+                        else:
+                            segment_download_rate = 0
+                        current_bitrate, netflix_rate_map, netflix_state = netflix_dash.netflix_dash(
+                            bitrates, dash_player, segment_download_rate, current_bitrate, average_segment_sizes,
+                            netflix_rate_map, netflix_state)
+                    except IndexError, e:
+                        config_dash.LOG.error(e)
+                else:
+                    config_dash.LOG.critical("Completed segment playback for Netflix")
+                    break
             else:
                 config_dash.LOG.error("Unknown playback type:{}. Continuing with basic playback".format(playback_type))
-                current_bitrate, average_dwn_time = basic_dash(segment_number, bitrates, average_dwn_time,
-                                                               segment_download_time, current_bitrate)
+                current_bitrate, average_dwn_time = basic_dash.basic_dash(segment_number, bitrates, average_dwn_time,
+                                                                          segment_download_time, current_bitrate)
         segment_path = dp_list[segment][current_bitrate]
         segment_url = urlparse.urljoin(domain, segment_path)
         start_time = timeit.default_timer()
@@ -297,9 +331,24 @@ def get_segment_sizes(dp_object, segment_number):
     return segment_sizes
 
 
+def get_average_segment_sizes(dp_object):
+    """
+    Module to get the avearge segment sizes for each bitrate
+    :param dp_object:
+    :return: A dictionary of aveage segment sizes for each bitrate
+    """
+    average_segment_sizes = dict()
+    for bitrate in dp_object.video:
+        segment_sizes = []
+        for segment_number in dp_object.video[bitrate].segment_sizes:
+            segment_sizes.append(dp_object.video[bitrate].segment_sizes[segment_number])
+        average_segment_sizes[bitrate] = sum(segment_sizes)/len(segment_sizes)
+    return average_segment_sizes
+
+
 def clean_files(folder_path):
     """
-    :param folder_path: Folder to be deleted
+    :param folder_path: Local Folder to be deleted
     """
     if os.path.exists(folder_path):
         try:
@@ -371,7 +420,7 @@ def create_arguments(parser):
                         help="List all the representations")
     parser.add_argument('-p', '--PLAYBACK',
                         default=DEFAULT_PLAYBACK,
-                        help="Playback type (basic, smart, or all)")
+                        help="Playback type (basic, sara, netflix, or all)")
     parser.add_argument('-n', '--SEGMENT_LIMIT',
                         default=SEGMENT_LIMIT,
                         help="The Segment number limit")
@@ -383,9 +432,8 @@ def create_arguments(parser):
 def main():
     """ Main Program wrapper """
     # configure the log file
-
     # Create arguments
-    parser = ArgumentParser(description='Process Client paameters')
+    parser = ArgumentParser(description='Process Client parameters')
     create_arguments(parser)
     args = parser.parse_args()
     globals().update(vars(args))
@@ -411,11 +459,14 @@ def main():
             config_dash.LOG.critical("Start ALL Parallel PLayback")
             start_playback_all(dp_object, domain)
     elif "basic" in PLAYBACK.lower():
-        config_dash.LOG.critical("Start Basic-DASH Playback")
+        config_dash.LOG.critical("Started Basic-DASH Playback")
         start_playback_smart(dp_object, domain, "BASIC", DOWNLOAD, video_segment_duration)
-    elif "smart" in PLAYBACK.lower():
-        config_dash.LOG.critical("Start Smart-DASH Playback: Weighted Harmonic mean")
+    elif "sara" in PLAYBACK.lower():
+        config_dash.LOG.critical("Started SARA-DASH Playback")
         start_playback_smart(dp_object, domain, "SMART", DOWNLOAD, video_segment_duration)
+    elif "netflix" in PLAYBACK.lower():
+        config_dash.LOG.critical("Started Netflix-DASH Playback")
+        start_playback_smart(dp_object, domain, "NETFLIX", DOWNLOAD, video_segment_duration)
     else:
         config_dash.LOG.error("Unknown Playback parameter {}".format(PLAYBACK))
         return None
