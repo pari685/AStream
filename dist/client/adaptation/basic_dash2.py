@@ -1,6 +1,6 @@
 __author__ = 'pjuluri'
 
-from .. import config_dash
+import config_dash
 
 
 def basic_dash2(segment_number, bitrates, average_dwn_time,

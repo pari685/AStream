@@ -1,6 +1,6 @@
 __author__ = 'pjuluri'
 
-from .. import config_dash
+import config_dash
 from adaptation import calculate_rate_index
 
 

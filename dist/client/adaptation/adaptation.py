@@ -23,7 +23,6 @@ def calculate_rate_index(bitrates, curr_rate):
                 return curr_rate
 
 
-
 class WeightedMean:
     """ Harmonic mean.
         The weights are the sizes of the segments

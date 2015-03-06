@@ -1,6 +1,6 @@
 __author__ = 'pjuluri'
 
-from .. import config_dash
+import config_dash
 
 
 def weighted_dash(bitrates, dash_player, weighted_dwn_rate, curr_bitrate, next_segment_sizes):

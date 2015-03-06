@@ -7,10 +7,8 @@ __author__ = 'pjuluri'
 [1] Huang, Te-Yuan, et al. "A buffer-based approach to rate adaptation: Evidence from a large video streaming service."
     Proceedings of the 2014 ACM conference on SIGCOMM. ACM, 2014.
 """
-try:
-    from .. import config_dash
-except ValueError:
-    import config_dash
+
+import config_dash
 from collections import OrderedDict
 
 
