@@ -2,11 +2,11 @@ from time import strftime
 import os
 # The configuration file for the AStream module
 # create logger
-LOG_NAME = 'astream_log'
+LOG_NAME = 'AStream_log'
 LOG_LEVEL = None
 
 # Set '-' to print to screen
-LOG_FOLDER = "LOGS/"
+LOG_FOLDER = "ASTREAM_LOGS/"
 if not os.path.exists(LOG_FOLDER):
     os.makedirs(LOG_FOLDER)
 
@@ -16,13 +16,16 @@ LOG_FILENAME = os.path.join(LOG_FOLDER, 'DASH_RUNTIME_LOG')
 # Buffer logs created by dash_buffer.py
 BUFFER_LOG_FILENAME = os.path.join(LOG_FOLDER, strftime('DASH_BUFFER_LOG_%Y-%m-%d.%H_%M_%S.csv'))
 LOG_FILE_HANDLE = None
-# Set
+# To be set by configure_log_file.py
 LOG = None
 
 # Constants for the BASIC-2 adaptation scheme
 BASIC_THRESHOLD = 10
 BASIC_UPPER_THRESHOLD = 1.2
 
+# ---------------------------------------------------
+# SARA (Segment Aware Rate Adaptation)
+# ---------------------------------------------------
 # Constants for the Buffer in the Weighted adaptation scheme (in segments)
 INITIAL_BUFFERING_COUNT = 1
 RE_BUFFERING_COUNT = 1
@@ -32,13 +35,13 @@ BETA_BUFFER_COUNT = 10
 MAX_BUFFER_SIZE = None
 
 # ---------------------------------------------------
-# NETFLIX ADAPTATION
+# Netflix (Buffer-based) ADAPTATION
 # ---------------------------------------------------
 # Constants for the Netflix Buffering scheme adaptation/netflix_buffer.py
-# Constants is terms of buffer occupancy percentage
+# Constants is terms of buffer occupancy PERCENTAGE(%)
 NETFLIX_RESERVOIR = 0.1
 NETFLIX_CUSHION = 0.9
-# Buffer Size in Number of segments 240 seconds/4
+# Buffer Size in Number of segments 240/4
 NETFLIX_BUFFER_SIZE = 60
 NETFLIX_INITIAL_BUFFER = 2
 NETFLIX_INITIAL_FACTOR = 0.875

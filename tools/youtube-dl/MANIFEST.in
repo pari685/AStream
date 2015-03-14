@@ -1,5 +1,0 @@
-include README.md
-include test/*.py
-include test/*.json
-include youtube-dl.bash-completion
-include youtube-dl.1
