@@ -1,5 +1,8 @@
+#!/usr/bin/env python
+
 from __future__ import division
 __author__ = 'pjuluri'
+
 """
  The current module is the buffer based adaptaion scheme used by Netflix. Current design is based
  on the design from the paper:
