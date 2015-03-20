@@ -1,6 +1,13 @@
 AStream: A rate adaptaion model for DASH
 ==================
-Adaptive Streaming
+AStream is a Python based emulated video player to evalutae the perfomance of the DASH bitrate adaptaion algorithms.
+
+
+Rate Adaptatation Algorithms Supported
+--------------------------------------
+1. Basic Adaptation
+2. Segment Aware Rate Adaptation (SARA)
+3. Buffer-Based Rate Adaptation (Netflix): This is based on the algorithm presented in the paper Te-Yuan Huang, Ramesh Johari, Nick McKeown, Matthew Trunnell, and Mark Watson. 2014. A buffer-based approach to rate adaptation: evidence from a large video streaming service. In Proceedings of the 2014 ACM conference on SIGCOMM (SIGCOMM '14). ACM, New York, NY, USA, 187-198. DOI=10.1145/2619239.2626296 http://doi.acm.org/10.1145/2619239.2626296
 
 Logs
 ----
