@@ -105,17 +105,22 @@ class DashPlayer:
                     self.playback_timer.pause()
                     buffering = True
                     interruption_start = time.time()
+                    config_dash.JSON_HANDLE['playback_info']['interruptions']['count'] += 1
                 # If the size of the buffer is greater than the RE_BUFFERING_DURATION then start playback
                 else:
                     # If the RE_BUFFERING_DURATION is greate than the remiang length of the video then do not wait
                     remaining_playback_time = self.playback_duration - self.playback_timer.time()
-                    if ((self.buffer.qsize() >= config_dash.RE_BUFFERING_COUNT) or
-                            (config_dash.RE_BUFFERING_COUNT * self.segment_duration >= remaining_playback_time and
-                            self.buffer.qsize() > 0)):
+                    if ((self.buffer.qsize() >= config_dash.RE_BUFFERING_COUNT) or (
+                            config_dash.RE_BUFFERING_COUNT * self.segment_duration >= remaining_playback_time
+                            and self.buffer.qsize() > 0)):
                         buffering = False
                         if interruption_start:
-                            interruption = time.time() - interruption_start
+                            interruption_end = time.time()
+                            interruption = interruption_end - interruption_start
                             interruption_start = None
+                            config_dash.JSON_HANDLE['playback_info']['interruptions']['events'].append(
+                                (interruption_start, interruption_end))
+                            config_dash.JSON_HANDLE['playback_info']['interruptions']['total_duration'] += interruption
                             config_dash.LOG.info("Duration of interruption = {}".format(interruption))
                         self.set_state("PLAY")
                         self.log_entry("Buffering-Play")

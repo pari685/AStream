@@ -2,7 +2,8 @@ import logging
 import config_dash
 import sys
 from time import strftime
-
+import io
+import json
 
 def configure_log_file(playback_type="", log_file=config_dash.LOG_FILENAME):
     """ Module to configure the log file and the log parameters.
@@ -25,3 +26,14 @@ def configure_log_file(playback_type="", log_file=config_dash.LOG_FILENAME):
         handler2.setFormatter(log_formatter)
         config_dash.LOG.addHandler(handler2)
         print("Started logging in the log file:{}".format(log_file))
+
+
+def write_json(json_data=config_dash.JSON_HANDLE, json_file=config_dash.JSON_LOG):
+    """
+    :param json_data: dict
+    :param json_file: json file
+    :return: None
+        Using utf-8 to reduce size of the file
+    """
+    with io.open(json_file, 'w', encoding='utf-8') as json_file_handle:
+        json_file_handle.write(unicode(json.dumps(json_data, ensure_ascii=False)))
