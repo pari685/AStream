@@ -30,7 +30,7 @@ from adaptation import basic_dash, basic_dash2, weighted_dash, netflix_dash
 from adaptation.adaptation import WeightedMean
 import config_dash
 import dash_buffer
-from configure_log_file import configure_log_file
+from configure_log_file import configure_log_file, write_json
 import time
 
 try:
@@ -88,7 +88,7 @@ def get_mpd(url):
     mpd_file_handle = open(mpd_file, 'w')
     mpd_file_handle.write(mpd_data)
     mpd_file_handle.close()
-    config_dash.LOG.info("DOwnloaded the MPD file {}".format(mpd_file))
+    config_dash.LOG.info("Downloaded the MPD file {}".format(mpd_file))
     return mpd_file
 
 
@@ -229,6 +229,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     # Start playback of all the segments
     for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.info(" {}: Processing the segment {}".format(playback_type.upper(), segment_number))
+        write_json()
         if not previous_bitrate:
             previous_bitrate = current_bitrate
         if SEGMENT_LIMIT:
@@ -342,6 +343,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     # waiting for the player to finish playing
     while dash_player.playback_state not in dash_buffer.EXIT_STATES:
         time.sleep(1)
+    write_json()
     if not download:
         clean_files(file_identifier)
 
