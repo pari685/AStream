@@ -52,6 +52,8 @@ JSON_HANDLE['playback_info'] = {'start_time': None,
 # Constants for the BASIC-2 adaptation scheme
 BASIC_THRESHOLD = 10
 BASIC_UPPER_THRESHOLD = 1.2
+# NUmber of segments for moving average
+BASIC_DELTA_COUNT = 5
 
 # ---------------------------------------------------
 # SARA (Segment Aware Rate Adaptation)

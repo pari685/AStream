@@ -215,6 +215,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     bitrates.sort()
     average_dwn_time = 0
     segment_files = []
+    # For basic adaptation
+    previous_segment_times = []
+    recent_download_sizes = []
     weighted_mean_object = None
     current_bitrate = bitrates[0]
     previous_bitrate = None
@@ -243,7 +246,12 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         else:
             if playback_type.upper() == "BASIC":
                 current_bitrate, average_dwn_time = basic_dash2.basic_dash2(segment_number, bitrates, average_dwn_time,
-                                                                            segment_download_time, total_downloaded)
+                                                                            recent_download_sizes,
+                                                                            previous_segment_times)
+
+                # basic_dash2(segment_number, bitrates, average_dwn_time,
+                # recent_download_sizes, previous_segment_times)
+
                 if dash_player.buffer.qsize() > config_dash.BASIC_THRESHOLD:
                     delay = dash_player.buffer.qsize() - config_dash.BASIC_THRESHOLD
                 config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
@@ -310,6 +318,8 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
         segment_download_time = timeit.default_timer() - start_time
+        previous_segment_times.append(segment_download_time)
+        recent_download_sizes.append(segment_size)
         # Updating the JSON information
         segment_name = os.path.split(segment_url)[1]
         if "segment_info" not in config_dash.JSON_HANDLE:
@@ -317,7 +327,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         config_dash.JSON_HANDLE["segment_info"].append((segment_name, current_bitrate, segment_size,
                                                         segment_download_time))
         total_downloaded += segment_size
-        config_dash.LOG.info("{} : The toltal downloaded = {}, segment_size = {}, segment_number = {}".format(
+        config_dash.LOG.info("{} : The total downloaded = {}, segment_size = {}, segment_number = {}".format(
             playback_type.upper(),
             total_downloaded, segment_size, segment_number))
         if playback_type.upper() == "SMART" and weighted_mean_object:
