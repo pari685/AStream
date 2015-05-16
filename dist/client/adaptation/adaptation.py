@@ -27,10 +27,11 @@ class WeightedMean:
     """ Harmonic mean.
         The weights are the sizes of the segments
     """
-    def __init__(self):
+    def __init__(self, sample_count):
         # List of (size, download_rate)
         self.segment_info = list()
         self.weighted_mean_rate = 0
+        self.sample_count = sample_count
 
     def update_weighted_mean(self, segment_size, segment_download_time):
         """ Method to update the weighted harmonic mean for the segments.
@@ -39,6 +40,8 @@ class WeightedMean:
             http://en.wikipedia.org/wiki/Harmonic_mean#Weighted_harmonic_mean
         """
         segment_download_rate = segment_size / segment_download_time
+        while len(self.segment_info) > self.sample_count:
+            self.segment_info.pop(0)
         self.segment_info.append((segment_size, segment_download_rate))
         self.weighted_mean_rate = sum([size for size, _ in self.segment_info]) / sum([s/r for s, r in self.segment_info])
         return self.weighted_mean_rate

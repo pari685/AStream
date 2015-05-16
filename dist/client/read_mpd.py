@@ -117,10 +117,12 @@ def read_mpd(mpd_file, dashplayback):
     except IOError:
         config_dash.LOG.error("MPD file not found. Exiting")
         return None
+    config_dash.JSON_HANDLE["video_metadata"] = {'mpd_file': mpd_file}
     root = tree.getroot()
     if 'MPD' in get_tag_name(root.tag).upper():
         if MEDIA_PRESENTATION_DURATION in root.attrib:
             dashplayback.playback_duration = get_playback_time(root.attrib[MEDIA_PRESENTATION_DURATION])
+            config_dash.JSON_HANDLE["video_metadata"]['playback_duration'] = dashplayback.playback_duration
         if MIN_BUFFER_TIME in root.attrib:
             dashplayback.min_buffer_time = get_playback_time(root.attrib[MIN_BUFFER_TIME])
     child_period = root[0]
@@ -138,8 +140,10 @@ def read_mpd(mpd_file, dashplayback):
                 config_dash.LOG.info("Found Video")
             if media_found:
                 config_dash.LOG.info("Retrieving Media")
+                config_dash.JSON_HANDLE["video_metadata"]['available_bitrates'] = list()
                 for representation in adaptation_set:
                     bandwidth = int(representation.attrib['bandwidth'])
+                    config_dash.JSON_HANDLE["video_metadata"]['available_bitrates'].append(bandwidth)
                     media_object[bandwidth] = MediaObject()
                     media_object[bandwidth].segment_sizes = []
                     for segment_info in representation:

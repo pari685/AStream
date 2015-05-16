@@ -39,14 +39,27 @@ BUFFER_LOG_FILENAME = os.path.join(LOG_FOLDER, strftime('DASH_BUFFER_LOG_%Y-%m-%
 LOG_FILE_HANDLE = None
 # To be set by configure_log_file.py
 LOG = None
-
+# JSON Filename
+JSON_LOG = os.path.join(LOG_FOLDER, strftime('ASTREAM_%Y-%m-%d.%H_%M_%S.json'))
+JSON_HANDLE = dict()
+JSON_HANDLE['playback_info'] = {'start_time': None,
+                                'end_time': None,
+                                'initial_buffering_duration': None,
+                                'interruptions': {'count': 0, 'events': list(), 'total_duration': 0},
+                                'up_shifts': 0,
+                                'down_shifts': 0
+                                }
 # Constants for the BASIC-2 adaptation scheme
 BASIC_THRESHOLD = 10
 BASIC_UPPER_THRESHOLD = 1.2
+# Number of segments for moving average
+BASIC_DELTA_COUNT = 5
 
 # ---------------------------------------------------
 # SARA (Segment Aware Rate Adaptation)
 # ---------------------------------------------------
+# Number of segments for moving weighted average
+SARA_SAMPLE_COUNT = 5
 # Constants for the Buffer in the Weighted adaptation scheme (in segments)
 INITIAL_BUFFERING_COUNT = 1
 RE_BUFFERING_COUNT = 1

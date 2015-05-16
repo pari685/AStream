@@ -30,7 +30,7 @@ from adaptation import basic_dash, basic_dash2, weighted_dash, netflix_dash
 from adaptation.adaptation import WeightedMean
 import config_dash
 import dash_buffer
-from configure_log_file import configure_log_file
+from configure_log_file import configure_log_file, write_json
 import time
 
 try:
@@ -88,7 +88,7 @@ def get_mpd(url):
     mpd_file_handle = open(mpd_file, 'w')
     mpd_file_handle.write(mpd_data)
     mpd_file_handle.close()
-    config_dash.LOG.info("DOwnloaded the MPD file {}".format(mpd_file))
+    config_dash.LOG.info("Downloaded the MPD file {}".format(mpd_file))
     return mpd_file
 
 
@@ -215,8 +215,12 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     bitrates.sort()
     average_dwn_time = 0
     segment_files = []
+    # For basic adaptation
+    previous_segment_times = []
+    recent_download_sizes = []
     weighted_mean_object = None
     current_bitrate = bitrates[0]
+    previous_bitrate = None
     total_downloaded = 0
     # Delay in terms of the number of segments
     delay = 0
@@ -228,6 +232,9 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
     # Start playback of all the segments
     for segment_number, segment in enumerate(dp_list, dp_object.video[current_bitrate].start):
         config_dash.LOG.info(" {}: Processing the segment {}".format(playback_type.upper(), segment_number))
+        write_json()
+        if not previous_bitrate:
+            previous_bitrate = current_bitrate
         if SEGMENT_LIMIT:
             if not dash_player.segment_limit:
                 dash_player.segment_limit = int(SEGMENT_LIMIT)
@@ -239,14 +246,19 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         else:
             if playback_type.upper() == "BASIC":
                 current_bitrate, average_dwn_time = basic_dash2.basic_dash2(segment_number, bitrates, average_dwn_time,
-                                                                            segment_download_time, total_downloaded)
+                                                                            recent_download_sizes,
+                                                                            previous_segment_times)
+
+                # basic_dash2(segment_number, bitrates, average_dwn_time,
+                # recent_download_sizes, previous_segment_times)
+
                 if dash_player.buffer.qsize() > config_dash.BASIC_THRESHOLD:
                     delay = dash_player.buffer.qsize() - config_dash.BASIC_THRESHOLD
                 config_dash.LOG.info("Basic-DASH: Selected {} for the segment {}".format(current_bitrate,
                                                                                          segment_number + 1))
             elif playback_type.upper() == "SMART":
                 if not weighted_mean_object:
-                    weighted_mean_object = WeightedMean()
+                    weighted_mean_object = WeightedMean(config_dash.SARA_SAMPLE_COUNT)
                     config_dash.LOG.debug("Initializing the weighted Mean object")
                 # Checking the segment number is in acceptable range
                 if segment_number < len(dp_list) - 1 + dp_object.video[bitrate].start:
@@ -290,8 +302,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                                                                           segment_download_time, current_bitrate)
         segment_path = dp_list[segment][current_bitrate]
         segment_url = urlparse.urljoin(domain, segment_path)
-        config_dash.LOG.info("{}: Segment URL = {}".format(playback_type.upper(), segment_url ))
-        start_time = timeit.default_timer()
+        config_dash.LOG.info("{}: Segment URL = {}".format(playback_type.upper(), segment_url))
         if delay:
             delay_start = time.time()
             config_dash.LOG.info("SLEEPING for {}seconds ".format(delay*segment_duration))
@@ -299,6 +310,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 time.sleep(1)
             delay = 0
             config_dash.LOG.debug("SLEPT for {}seconds ".format(time.time() - delay_start))
+        start_time = timeit.default_timer()
         try:
             segment_size, segment_filename = download_segment(segment_url, file_identifier)
             config_dash.LOG.info("{}: Downloaded segment {}".format(playback_type.upper(), segment_url))
@@ -306,8 +318,17 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             config_dash.LOG.error("Unable to save segment %s" % e)
             return None
         segment_download_time = timeit.default_timer() - start_time
+        previous_segment_times.append(segment_download_time)
+        recent_download_sizes.append(segment_size)
+        # Updating the JSON information
+        segment_name = os.path.split(segment_url)[1]
+        if "segment_info" not in config_dash.JSON_HANDLE:
+            config_dash.JSON_HANDLE["segment_info"] = list()
+        config_dash.JSON_HANDLE["segment_info"].append((segment_name, current_bitrate, segment_size,
+                                                        segment_download_time))
         total_downloaded += segment_size
-        config_dash.LOG.info("{} : The toltal downloaded = {}, segment_size = {}, segment_number = {}".format(playback_type.upper(),
+        config_dash.LOG.info("{} : The total downloaded = {}, segment_size = {}, segment_number = {}".format(
+            playback_type.upper(),
             total_downloaded, segment_size, segment_number))
         if playback_type.upper() == "SMART" and weighted_mean_object:
             weighted_mean_object.update_weighted_mean(segment_size, segment_download_time)
@@ -323,8 +344,16 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
         segment_files.append(segment_filename)
         config_dash.LOG.info("Downloaded %s. Size = %s in %s seconds" % (
             segment_url, segment_size, str(segment_download_time)))
+        if previous_bitrate:
+            if previous_bitrate < current_bitrate:
+                config_dash.JSON_HANDLE['playback_info']['up_shifts'] += 1
+            elif previous_bitrate > current_bitrate:
+                config_dash.JSON_HANDLE['playback_info']['down_shifts'] += 1
+
+    # waiting for the player to finish playing
     while dash_player.playback_state not in dash_buffer.EXIT_STATES:
         time.sleep(1)
+    write_json()
     if not download:
         clean_files(file_identifier)
 
@@ -375,7 +404,7 @@ def start_playback_all(dp_object, domain):
     """ Module that downloads the MPD-FIle and download all the representations of 
         the Module to download the MPEG-DASH media.
     """
-    audio_done_queue = Queue()
+    # audio_done_queue = Queue()
     video_done_queue = Queue()
     processes = []
     file_identifier = id_generator(6)
@@ -447,11 +476,11 @@ def main():
     args = parser.parse_args()
     globals().update(vars(args))
     configure_log_file(playback_type=PLAYBACK.lower())
+    config_dash.JSON_HANDLE['playback_type'] = PLAYBACK.lower()
     if not MPD:
         print "ERROR: Please provide the URL to the MPD file. Try Again.."
         return None
     config_dash.LOG.info('Downloading MPD file %s' % MPD)
-    
     # Retrieve the MPD files for the video
     mpd_file = get_mpd(MPD)
     domain = get_domain_name(MPD)
