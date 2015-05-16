@@ -258,7 +258,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                                                                                          segment_number + 1))
             elif playback_type.upper() == "SMART":
                 if not weighted_mean_object:
-                    weighted_mean_object = WeightedMean()
+                    weighted_mean_object = WeightedMean(config_dash.SARA_SAMPLE_COUNT)
                     config_dash.LOG.debug("Initializing the weighted Mean object")
                 # Checking the segment number is in acceptable range
                 if segment_number < len(dp_list) - 1 + dp_object.video[bitrate].start:
