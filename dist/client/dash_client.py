@@ -247,10 +247,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
             if playback_type.upper() == "BASIC":
                 current_bitrate, average_dwn_time = basic_dash2.basic_dash2(segment_number, bitrates, average_dwn_time,
                                                                             recent_download_sizes,
-                                                                            previous_segment_times)
-
-                # basic_dash2(segment_number, bitrates, average_dwn_time,
-                # recent_download_sizes, previous_segment_times)
+                                                                            previous_segment_times, current_bitrate)
 
                 if dash_player.buffer.qsize() > config_dash.BASIC_THRESHOLD:
                     delay = dash_player.buffer.qsize() - config_dash.BASIC_THRESHOLD
@@ -349,6 +346,7 @@ def start_playback_smart(dp_object, domain, playback_type=None, download=False, 
                 config_dash.JSON_HANDLE['playback_info']['up_shifts'] += 1
             elif previous_bitrate > current_bitrate:
                 config_dash.JSON_HANDLE['playback_info']['down_shifts'] += 1
+            previous_bitrate = current_bitrate
 
     # waiting for the player to finish playing
     while dash_player.playback_state not in dash_buffer.EXIT_STATES:

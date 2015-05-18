@@ -4,7 +4,7 @@ import config_dash
 
 
 def basic_dash2(segment_number, bitrates, average_dwn_time,
-                recent_download_sizes, previous_segment_times):
+                recent_download_sizes, previous_segment_times, current_bitrate):
     """
     Module to predict the next_bitrate using the basic_dash algorithm. Selects the bitrate that is one lower than the
     current network capacity.
@@ -33,12 +33,29 @@ def basic_dash2(segment_number, bitrates, average_dwn_time,
     bitrates = [float(i) for i in bitrates]
     bitrates.sort()
     next_rate = bitrates[0]
-    for index, bitrate in enumerate(bitrates[1:], 1):
-        if download_rate > bitrate:
+
+    # Check if we need to increase or decrease bitrate
+    if download_rate > current_bitrate * config_dash.BASIC_UPPER_THRESHOLD:
+
+        # Increase rate only if  download_rate is higher by a certain margin
+        # Check if the bitrate is already at max
+        if current_bitrate == bitrates[-1]:
+            next_rate = current_bitrate
+        else:
+            # if the bitrate is not at maximum then select the next higher bitrate
+            try:
+                current_index = bitrates.index(current_bitrate)
+                next_rate = bitrates[current_index + 1]
+            except ValueError:
+                current_index = bitrates[0]
+    else:
+        # If the download_rate is lower than the current bitrate then pick the most suitable bitrate
+        for index, bitrate in enumerate(bitrates[1:], 1):
             if download_rate > bitrate * config_dash.BASIC_UPPER_THRESHOLD:
-                next_rate = bitrates[index]
+                next_rate = bitrate
             else:
                 next_rate = bitrates[index - 1]
-    config_dash.LOG.info("Download Rate = {}, next_bitrate = {}".format(download_rate, next_rate))
+                break
+    config_dash.LOG.info("Basic Adaptation: Download Rate = {}, next_bitrate = {}".format(download_rate, next_rate))
     return next_rate, updated_dwn_time
 
