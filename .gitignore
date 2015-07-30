@@ -1,7 +1,6 @@
 #################
 ## Eclipse
 #################
-*.mpd
 *.m4s
 *.csv
 *.pydevproject
