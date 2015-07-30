@@ -38,7 +38,7 @@ python dist/client/dash_client.py -m <URL TO MPD> -p <PlaybackType>
 
 Command Line options
 --------------------
-
+```
 dash_client.py [-h] [-m MPD] [-l] [-p PLAYBACK] [-n SEGMENT_LIMIT] [-d]
 
 Process Client parameters
@@ -52,3 +52,4 @@ optional arguments:
   -n SEGMENT_LIMIT, --SEGMENT_LIMIT SEGMENT_LIMIT
                         The Segment number limit
   -d, --DOWNLOAD        Keep the video files after playback
+```
