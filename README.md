@@ -33,8 +33,9 @@ Playback Logs:
 
 Sample Run
 ----------
+```
 python dist/client/dash_client.py -m <URL TO MPD> -p <PlaybackType> 
-
+```
 
 Command Line options
 --------------------
