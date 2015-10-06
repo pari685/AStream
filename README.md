@@ -1,4 +1,4 @@
-AStream: A rate adaptaion model for DASH
+AStream: A rate adaptation model for DASH
 ==================
 AStream is a Python based emulated video player to evalutae the perfomance of the DASH bitrate adaptaion algorithms.
 
