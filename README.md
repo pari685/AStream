@@ -49,7 +49,7 @@ optional arguments:
   -m MPD, --MPD MPD     Url to the MPD File
   -l, --LIST            List all the representations
   -p PLAYBACK, --PLAYBACK PLAYBACK
-                        Playback type (basic, sara, netflix, or all)
+                        Playback type ('basic', 'sara', 'netflix', or 'all')
   -n SEGMENT_LIMIT, --SEGMENT_LIMIT SEGMENT_LIMIT
                         The Segment number limit
   -d, --DOWNLOAD        Keep the video files after playback
