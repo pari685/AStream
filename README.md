@@ -47,7 +47,7 @@ Process Client parameters
 optional arguments:
   -h, --help            show this help message and exit
   -m MPD, --MPD MPD     Url to the MPD File
-  -l, --LIST            List all the representations
+  -l, --LIST            List all the representations and quit
   -p PLAYBACK, --PLAYBACK PLAYBACK
                         Playback type ('basic', 'sara', 'netflix', or 'all')
   -n SEGMENT_LIMIT, --SEGMENT_LIMIT SEGMENT_LIMIT
