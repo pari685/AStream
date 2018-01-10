@@ -21,6 +21,8 @@ class DashPlayer:
         self.playback_start_time = None
         self.playback_duration = video_length
         self.segment_duration = segment_duration
+        #print "video_length = {}".format(video_length)
+        #print "segment_duration = {}".format(segment_duration)
         # Timers to keep track of playback time and the actual time
         self.playback_timer = StopWatch()
         self.actual_start_time = None
@@ -76,6 +78,7 @@ class DashPlayer:
             if self.playback_state == "END":
                 config_dash.LOG.info("Finished playback of the video: {} seconds of video played for {} seconds".format(
                     self.playback_duration, time.time() - start_time))
+                config_dash.JSON_HANDLE['playback_info']['end_time'] = time.time()
                 self.playback_timer.pause()
                 return "STOPPED"
 
@@ -83,6 +86,7 @@ class DashPlayer:
                 # If video is stopped quit updating the playback time and exit player
                 config_dash.LOG.info("Player Stopped at time {}".format(
                     time.time() - start_time))
+                config_dash.JSON_HANDLE['playback_info']['end_time'] = time.time()
                 self.playback_timer.pause()
                 self.log_entry("Stopped")
                 return "STOPPED"
@@ -117,11 +121,12 @@ class DashPlayer:
                         if interruption_start:
                             interruption_end = time.time()
                             interruption = interruption_end - interruption_start
-                            interruption_start = None
+
                             config_dash.JSON_HANDLE['playback_info']['interruptions']['events'].append(
                                 (interruption_start, interruption_end))
                             config_dash.JSON_HANDLE['playback_info']['interruptions']['total_duration'] += interruption
                             config_dash.LOG.info("Duration of interruption = {}".format(interruption))
+                            interruption_start = None
                         self.set_state("PLAY")
                         self.log_entry("Buffering-Play")
 
@@ -131,6 +136,8 @@ class DashPlayer:
                     continue
                 else:
                     config_dash.LOG.info("Initial Waiting Time = {}".format(initial_wait))
+                    config_dash.JSON_HANDLE['playback_info']['initial_buffering_duration'] = initial_wait
+                    config_dash.JSON_HANDLE['playback_info']['start_time'] = time.time()
                     self.set_state("PLAY")
                     self.log_entry("InitialBuffering-Play")
 
@@ -194,6 +201,7 @@ class DashPlayer:
         # Acquire Lock on the buffer and add a segment to it
         if not self.actual_start_time:
             self.actual_start_time = time.time()
+            config_dash.JSON_HANDLE['playback_info']['start_time'] = self.actual_start_time
         config_dash.LOG.info("Writing segment {} at time {}".format(segment['segment_number'],
                                                                     time.time() - self.actual_start_time))
         self.buffer_lock.acquire()
